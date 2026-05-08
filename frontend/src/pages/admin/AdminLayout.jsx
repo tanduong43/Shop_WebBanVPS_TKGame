@@ -9,10 +9,10 @@ import {
 import { HiSparkles } from 'react-icons/hi';
 
 const navItems = [
-  { to: '/admin',          label: 'Dashboard',   icon: FiGrid,      exact: true },
-  { to: '/admin/products', label: 'Sản Phẩm',    icon: FiPackage },
-  { to: '/admin/orders',   label: 'Đơn Hàng',    icon: FiShoppingBag },
-  { to: '/admin/users',    label: 'Người Dùng',  icon: FiUsers },
+  { to: '/admin', label: 'Dashboard', icon: FiGrid, exact: true },
+  { to: '/admin/products', label: 'Sản Phẩm', icon: FiPackage },
+  { to: '/admin/orders', label: 'Đơn Hàng', icon: FiShoppingBag },
+  { to: '/admin/users', label: 'Người Dùng', icon: FiUsers },
 ];
 
 const AdminLayout = () => {
@@ -34,7 +34,7 @@ const AdminLayout = () => {
             <HiSparkles className="text-white text-lg" />
           </div>
           <div>
-            <p className="text-white font-bold text-sm">GameShop Admin</p>
+            <p className="text-white font-bold text-sm">DuongKa Admin</p>
             <p className="text-white/40 text-xs">{user?.username}</p>
           </div>
         </div>
@@ -49,10 +49,9 @@ const AdminLayout = () => {
             end={exact}
             onClick={() => setSidebarOpen(false)}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${
-                isActive
-                  ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30 shadow-glow-primary/20'
-                  : 'text-white/60 hover:bg-white/5 hover:text-white'
+              `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${isActive
+                ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30 shadow-glow-primary/20'
+                : 'text-white/60 hover:bg-white/5 hover:text-white'
               }`
             }
           >

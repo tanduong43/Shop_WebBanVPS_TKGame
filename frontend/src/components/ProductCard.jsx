@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fi';
 import { FaGamepad } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import TiltCard from './TiltCard';
 
 // Format giá tiền VN
 const formatPrice = (price) =>
@@ -33,7 +34,7 @@ const ProductCard = ({ product }) => {
 
   return (
     <Link to={`/products/${product._id}`} className="block group">
-      <div className="glass-card-hover h-full flex flex-col overflow-hidden transition-all duration-300 group-hover:-translate-y-1">
+      <TiltCard className="glass-card-hover h-full flex flex-col overflow-hidden transition-all duration-300 group-hover:-translate-y-1">
         {/* Header gradient banner */}
         <div className={`h-36 flex items-center justify-center relative overflow-hidden ${
           isGame
@@ -140,7 +141,7 @@ const ProductCard = ({ product }) => {
             </button>
           </div>
         </div>
-      </div>
+      </TiltCard>
     </Link>
   );
 };

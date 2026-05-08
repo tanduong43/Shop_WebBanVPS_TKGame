@@ -13,8 +13,8 @@ const Navbar = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const { totalItems } = useCart();
   const navigate = useNavigate();
-  const [isMenuOpen, setIsMenuOpen]   = useState(false);
-  const [isScrolled, setIsScrolled]   = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   // Đổi style navbar khi scroll
@@ -31,15 +31,14 @@ const Navbar = () => {
   };
 
   const navLinks = [
-    { to: '/',         label: 'Trang Chủ',  icon: FiHome },
-    { to: '/products', label: 'Sản Phẩm',   icon: FiGrid },
-    { to: '/orders',   label: 'Đơn Hàng',   icon: FiPackage, authRequired: true },
+    { to: '/', label: 'Trang Chủ', icon: FiHome },
+    { to: '/products', label: 'Sản Phẩm', icon: FiGrid },
+    { to: '/orders', label: 'Đơn Hàng', icon: FiPackage, authRequired: true },
   ];
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      isScrolled ? 'bg-dark-900/95 backdrop-blur-lg shadow-2xl border-b border-white/5' : 'bg-transparent'
-    }`}>
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-dark-900/95 backdrop-blur-lg shadow-2xl border-b border-white/5' : 'bg-transparent'
+      }`}>
       <div className="section-container">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -47,7 +46,7 @@ const Navbar = () => {
             <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-accent-500 rounded-xl flex items-center justify-center group-hover:shadow-glow-primary transition-all duration-300">
               <HiSparkles className="text-white text-lg" />
             </div>
-            <span className="text-xl font-bold gradient-text hidden sm:block">GameShop</span>
+            <span className="text-xl font-bold gradient-text hidden sm:block">DuongKa</span>
           </Link>
 
           {/* Desktop Nav */}
@@ -59,10 +58,9 @@ const Navbar = () => {
                   key={to}
                   to={to}
                   className={({ isActive }) =>
-                    `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      isActive
-                        ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30'
-                        : 'text-white/70 hover:text-white hover:bg-white/5'
+                    `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${isActive
+                      ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30'
+                      : 'text-white/70 hover:text-white hover:bg-white/5'
                     }`
                   }
                 >
@@ -171,8 +169,7 @@ const Navbar = () => {
                   to={to}
                   onClick={() => setIsMenuOpen(false)}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      isActive ? 'bg-primary-500/20 text-primary-400' : 'text-white/70 hover:bg-white/5 hover:text-white'
+                    `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-primary-500/20 text-primary-400' : 'text-white/70 hover:bg-white/5 hover:text-white'
                     }`
                   }
                 >

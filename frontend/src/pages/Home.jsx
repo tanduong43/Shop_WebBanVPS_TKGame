@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { productAPI } from '../services/api';
 import ProductCard from '../components/ProductCard';
 import SkeletonCard from '../components/SkeletonCard';
+import TiltCard from '../components/TiltCard';
 import {
   FiShoppingCart, FiServer, FiShield, FiZap, FiStar,
   FiArrowRight, FiMessageCircle,
@@ -12,23 +13,23 @@ import { HiSparkles } from 'react-icons/hi';
 import { FaGamepad } from 'react-icons/fa';
 
 const StatCard = ({ icon: Icon, value, label, color }) => (
-  <div className="glass-card p-5 text-center group hover:scale-105 transition-transform duration-300">
+  <TiltCard className="glass-card p-5 text-center group hover:scale-105 transition-transform duration-300">
     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 ${color}`}>
       <Icon className="text-2xl text-white" />
     </div>
     <p className="text-2xl font-bold gradient-text">{value}</p>
     <p className="text-white/50 text-sm mt-1">{label}</p>
-  </div>
+  </TiltCard>
 );
 
 const FeatureCard = ({ icon: Icon, title, description, color }) => (
-  <div className="glass-card-hover p-6">
+  <TiltCard className="glass-card-hover p-6">
     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${color}`}>
       <Icon className="text-2xl text-white" />
     </div>
     <h3 className="text-white font-semibold mb-2">{title}</h3>
     <p className="text-white/50 text-sm leading-relaxed">{description}</p>
-  </div>
+  </TiltCard>
 );
 
 const Home = () => {
@@ -52,37 +53,38 @@ const Home = () => {
   return (
     <div className="min-h-screen">
       {/* ── Hero Section ─────────────────────────────────────────────────── */}
-      <section className="relative pt-28 pb-20 overflow-hidden">
+      <section className="hero-cinematic relative pt-28 pb-20 overflow-hidden">
         {/* BG decorations */}
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent-500/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-600/5 rounded-full blur-3xl" />
+        <div className="hero-glow hero-glow-left" />
+        <div className="hero-glow hero-glow-right" />
+        <div className="hero-glow hero-glow-center" />
+        <div className="hero-vignette" />
 
         <div className="section-container relative text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-400 text-sm font-medium mb-6 animate-fade-in">
+          <div className="hero-badge inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-400 text-sm font-medium mb-6">
             <HiSparkles className="text-accent-500" />
             Uy tín – Nhanh chóng – Bảo hành
           </div>
 
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black mb-6 animate-slide-up">
-            <span className="text-white">Mua Ngay</span>
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black mb-6 hero-title">
+            <span className="text-white hero-line">Mua Ngay</span>
             <br />
-            <span className="gradient-text">Account Game & VPS</span>
+            <span className="gradient-text hero-line hero-line-delay-1">Account Game & VPS</span>
             <br />
-            <span className="text-white/60 text-3xl sm:text-4xl font-bold">Chất Lượng Cao</span>
+            <span className="text-white/60 text-3xl sm:text-4xl font-bold hero-line hero-line-delay-2">Chất Lượng Cao</span>
           </h1>
 
-          <p className="text-white/60 text-lg max-w-2xl mx-auto mb-10 animate-slide-up">
+          <p className="text-white/60 text-lg max-w-2xl mx-auto mb-10 hero-copy">
             Hệ thống cung cấp tài khoản game uy tín và VPS hiệu năng cao.
             Giao dịch nhanh qua Zalo, bảo hành rõ ràng, hỗ trợ 24/7.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up">
-            <Link to="/products?type=game_account" className="btn-primary flex items-center justify-center gap-2 text-base py-3.5 px-8">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center hero-actions">
+            <Link to="/products?type=game_account" className="btn-primary flex items-center justify-center gap-2 text-base py-3.5 px-8 hero-cta">
               <FaGamepad className="text-xl" /> Xem Game Account
             </Link>
-            <Link to="/products?type=vps" className="btn-secondary flex items-center justify-center gap-2 text-base py-3.5 px-8">
+            <Link to="/products?type=vps" className="btn-secondary flex items-center justify-center gap-2 text-base py-3.5 px-8 hero-cta hero-cta-delay">
               <FiServer className="text-xl" /> Xem VPS
             </Link>
           </div>

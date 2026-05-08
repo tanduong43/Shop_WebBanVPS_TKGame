@@ -13,10 +13,10 @@ const Footer = () => (
             <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-accent-500 rounded-xl flex items-center justify-center">
               <HiSparkles className="text-white text-lg" />
             </div>
-            <span className="text-xl font-bold gradient-text">GameShop</span>
+            <span className="text-xl font-bold gradient-text">DuongKa</span>
           </Link>
           <p className="text-white/50 text-sm leading-relaxed max-w-sm">
-            Chuyên cung cấp tài khoản game uy tín và VPS chất lượng cao. 
+            Chuyên cung cấp tài khoản game uy tín và VPS chất lượng cao.
             Giao dịch nhanh chóng, bảo hành rõ ràng, hỗ trợ 24/7 qua Zalo.
           </p>
           <div className="flex items-center gap-3 mt-4">
@@ -53,7 +53,7 @@ const Footer = () => (
       </div>
 
       <div className="border-t border-white/5 mt-8 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <p className="text-white/30 text-sm">© 2025 GameShop. All rights reserved.</p>
+        <p className="text-white/30 text-sm">© 2025 DuongKa. All rights reserved.</p>
         <div className="flex items-center gap-2 text-white/30 text-sm">
           <FiShield className="text-green-400" />
           <span>Giao dịch an toàn & bảo mật</span>
