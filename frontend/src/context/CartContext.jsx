@@ -1,33 +1,46 @@
 // src/context/CartContext.jsx - Quản lý giỏ hàng
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
+import { useAuth } from './AuthContext'; // 👈 thêm
 
 const CartContext = createContext(null);
 
-const CART_KEY = 'webshopac_cart';
-
 export const CartProvider = ({ children }) => {
-  // Khởi tạo cart từ localStorage
-  const [cart, setCart] = useState(() => {
-    try {
-      const saved = localStorage.getItem(CART_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const { user } = useAuth(); // 👈 thêm
+  const [cart, setCart] = useState([]);
 
-  // Sync cart → localStorage mỗi khi thay đổi
+  // Key riêng theo từng user, guest không có key
+  const cartKey = user?._id ? `webshopac_cart_${user._id}` : null; // 👈 thêm
+
+  // Load cart từ localStorage khi user thay đổi (login/logout)
   useEffect(() => {
-    localStorage.setItem(CART_KEY, JSON.stringify(cart));
-  }, [cart]);
+    if (!cartKey) {
+      setCart([]); // đăng xuất → reset giỏ hàng
+      return;
+    }
+    try {
+      const saved = localStorage.getItem(cartKey);
+      setCart(saved ? JSON.parse(saved) : []);
+    } catch {
+      setCart([]);
+    }
+  }, [cartKey]); // 👈 chạy lại mỗi khi user thay đổi
+
+  // Sync cart → localStorage (chỉ khi đã đăng nhập)
+  useEffect(() => {
+    if (!cartKey) return; // guest → không lưu
+    localStorage.setItem(cartKey, JSON.stringify(cart));
+  }, [cart, cartKey]);
 
   // Thêm sản phẩm vào giỏ
   const addToCart = useCallback((product, quantity = 1) => {
+    if (!user) { // 👈 chặn guest
+      toast.warning('Vui lòng đăng nhập để thêm vào giỏ hàng!');
+      return;
+    }
     setCart((prev) => {
       const existing = prev.find((item) => item._id === product._id);
       if (existing) {
-        // Đã có → tăng số lượng
         toast.success(`Đã thêm thêm ${product.name} vào giỏ hàng`);
         return prev.map((item) =>
           item._id === product._id
@@ -35,11 +48,10 @@ export const CartProvider = ({ children }) => {
             : item
         );
       }
-      // Chưa có → thêm mới
       toast.success(`✅ ${product.name} đã được thêm vào giỏ hàng!`);
       return [...prev, { ...product, quantity }];
     });
-  }, []);
+  }, [user]); // 👈 thêm user vào deps
 
   // Xóa sản phẩm khỏi giỏ
   const removeFromCart = useCallback((productId) => {
@@ -60,8 +72,8 @@ export const CartProvider = ({ children }) => {
   // Xóa toàn bộ giỏ hàng
   const clearCart = useCallback(() => {
     setCart([]);
-    localStorage.removeItem(CART_KEY);
-  }, []);
+    if (cartKey) localStorage.removeItem(cartKey); // 👈 xóa đúng key
+  }, [cartKey]);
 
   // Tính tổng tiền
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);

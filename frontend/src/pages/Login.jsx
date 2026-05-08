@@ -8,18 +8,18 @@ import { toast } from 'react-toastify';
 
 const Login = () => {
   const { login } = useAuth();
-  const navigate  = useNavigate();
-  const location  = useLocation();
-  const from      = location.state?.from?.pathname || '/';
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || '/';
 
-  const [form, setForm]         = useState({ email: '', password: '' }); // email = email hoặc username
+  const [form, setForm] = useState({ email: '', password: '' }); // email = email hoặc username
   const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [errors, setErrors]     = useState({});
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const validate = () => {
     const e = {};
-    if (!form.email)    e.email    = 'Email/Username là bắt buộc';
+    if (!form.email) e.email = 'Email/Username là bắt buộc';
     if (!form.password) e.password = 'Password là bắt buộc';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -116,12 +116,13 @@ const Login = () => {
           </p>
         </div>
 
-        {/* Demo hint */}
+        {/* Demo hint 
         <div className="mt-4 glass-card p-4 text-xs text-white/40">
           <p className="font-semibold text-white/60 mb-1">Demo admin:</p>
           <p>Username: <span className="text-white/70">nguyenduong</span> (hoặc Email: <span className="text-white/70">nguyenduong@admin.com</span>)</p>
           <p>Password: <span className="text-white/70">Duong@43</span></p>
-        </div>
+        </div>*/}
+
       </div>
     </div>
   );
