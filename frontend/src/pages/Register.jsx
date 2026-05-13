@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiCheck } from 'react-icons/fi';
-import { HiSparkles } from 'react-icons/hi';
+import logo from '../assets/logo.png';
 import { toast } from 'react-toastify';
 
 const Register = () => {
@@ -60,9 +60,7 @@ const Register = () => {
 
       <div className="w-full max-w-md px-4 animate-slide-up">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-gradient-to-br from-primary-500 to-accent-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-glow-primary">
-            <HiSparkles className="text-white text-2xl" />
-          </div>
+          <img src={logo} alt="DK logo" className="w-16 h-16 rounded-2xl object-cover mx-auto mb-4 shadow-glow-primary hover:scale-105 transition-transform" />
           <h1 className="text-3xl font-bold text-white">Tạo Tài Khoản</h1>
           <p className="text-white/50 mt-2">Đăng ký để bắt đầu mua sắm!</p>
         </div>
