@@ -1,7 +1,7 @@
 // src/components/Footer.jsx
 import { Link } from 'react-router-dom';
-import { HiSparkles } from 'react-icons/hi';
 import { FiFacebook, FiMessageCircle, FiMail, FiShield } from 'react-icons/fi';
+import logo from '../assets/logo.png';
 
 const Footer = () => (
   <footer className="border-t border-white/5 bg-dark-900/50 mt-20">
@@ -10,9 +10,7 @@ const Footer = () => (
         {/* Brand */}
         <div className="col-span-1 md:col-span-2">
           <Link to="/" className="flex items-center gap-2 mb-4">
-            <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-accent-500 rounded-xl flex items-center justify-center">
-              <HiSparkles className="text-white text-lg" />
-            </div>
+            <img src={logo} alt="DK logo" className="w-9 h-9 rounded-xl object-cover" />
             <span className="text-xl font-bold gradient-text">DuongKa</span>
           </Link>
           <p className="text-white/50 text-sm leading-relaxed max-w-sm">

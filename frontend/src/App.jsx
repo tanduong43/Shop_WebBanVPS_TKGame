@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import ScrollToTop from './components/ScrollToTop';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -12,6 +13,7 @@ import Cart from './pages/Cart';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Orders from './pages/Orders';
+import Profile from './pages/Profile';
 import NeonFishSchool from './components/NeonFishSchool';
 
 import AdminLayout from './pages/admin/AdminLayout';
@@ -41,64 +43,6 @@ const NotFound = () => (
   </div>
 );
 
-const CursorGlow = () => {
-  const layerRef = useRef(null);
-  const initialPos = {
-    x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0,
-    y: typeof window !== 'undefined' ? window.innerHeight / 2 : 0,
-  };
-  const targetPosRef = useRef({
-    ...initialPos,
-  });
-  const currentPosRef = useRef({ ...initialPos });
-  const rafRef = useRef(null);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(pointer: fine)');
-    if (!mediaQuery.matches) return undefined;
-
-    const handleMove = (event) => {
-      targetPosRef.current.x = event.clientX;
-      targetPosRef.current.y = event.clientY;
-    };
-
-    const animate = () => {
-      const dx = targetPosRef.current.x - currentPosRef.current.x;
-      const dy = targetPosRef.current.y - currentPosRef.current.y;
-
-      currentPosRef.current.x += dx * 0.12;
-      currentPosRef.current.y += dy * 0.12;
-
-      if (layerRef.current) {
-        layerRef.current.style.setProperty('--glow-x', `${currentPosRef.current.x}px`);
-        layerRef.current.style.setProperty('--glow-y', `${currentPosRef.current.y}px`);
-      }
-
-      rafRef.current = window.requestAnimationFrame(animate);
-    };
-
-    window.addEventListener('pointermove', handleMove, { passive: true });
-    rafRef.current = window.requestAnimationFrame(animate);
-
-    return () => {
-      window.removeEventListener('pointermove', handleMove);
-      if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
-
-  return (
-    <div
-      ref={layerRef}
-      className="cursor-glow-layer"
-      aria-hidden="true"
-      style={{ '--glow-x': '50vw', '--glow-y': '50vh' }}
-    >
-      <span className="cursor-glow glow-primary" />
-      <span className="cursor-glow glow-secondary" />
-      <span className="cursor-glow glow-accent" />
-    </div>
-  );
-};
 
 const FloatingParticles = ({ count = 22 }) => {
   const particles = useMemo(
@@ -140,8 +84,9 @@ export default function App() {
   return (
     <>
       <FloatingParticles />
-      <CursorGlow />
+
       <NeonFishSchool />
+      <ScrollToTop />
       <Routes>
         {/* Public site */}
         <Route element={<PublicLayout />}>
@@ -156,6 +101,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Orders />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             }
           />

@@ -21,6 +21,8 @@ const ProductCard = ({ product }) => {
   const navigate = useNavigate();
   const inCart = isInCart(product._id);
   const isGame = product.type === 'game_account';
+  const gameImages = Array.isArray(product.accountInfo?.images) ? product.accountInfo.images : [];
+  const primaryGameImage = isGame && gameImages.length > 0 ? gameImages[0] : '';
 
   const handleAddToCart = (e) => {
     e.preventDefault();
@@ -47,7 +49,9 @@ const ProductCard = ({ product }) => {
               backgroundSize: '30px 30px',
             }}
           />
-          {isGame ? (
+          {primaryGameImage ? (
+            <img src={primaryGameImage} alt={product.name} className="w-full h-full object-cover" />
+          ) : isGame ? (
             <FaGamepad className="text-6xl text-red-400/60 group-hover:scale-110 transition-transform duration-300" />
           ) : (
             <FiServer className="text-6xl text-primary-400/60 group-hover:scale-110 transition-transform duration-300" />

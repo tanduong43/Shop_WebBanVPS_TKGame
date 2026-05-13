@@ -10,6 +10,7 @@ const accountInfoSchema = new mongoose.Schema({
   items: { type: String, default: '' },         // Vật phẩm nổi bật
   loginMethod: { type: String, default: '' },   // Cách đăng nhập (email/phone)
   extras: { type: String, default: '' },        // Thông tin thêm
+  images: [{ type: String, trim: true }],       // Danh sách URL ảnh account
 }, { _id: false });
 
 // Sub-schema thông tin VPS

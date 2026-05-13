@@ -5,6 +5,7 @@ import Modal from '../../components/Modal';
 import { toast } from 'react-toastify';
 import {
   FiPlus, FiSearch, FiEdit2, FiTrash2, FiRefreshCw, FiX,
+  FiToggleLeft, FiToggleRight,
 } from 'react-icons/fi';
 
 const emptyForm = {
@@ -21,6 +22,7 @@ const emptyForm = {
     items: '',
     loginMethod: '',
     extras: '',
+    images: [],
   },
   vpsInfo: {
     ram: '',
@@ -35,6 +37,14 @@ const emptyForm = {
 
 const formatPrice = (p) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(p || 0));
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error(`Không đọc được file ${file.name}`));
+    reader.readAsDataURL(file);
+  });
 
 export default function AdminProducts() {
   const [items, setItems] = useState([]);
@@ -80,7 +90,11 @@ export default function AdminProducts() {
       stock: p.stock ?? 0,
       description: p.description || '',
       tags: Array.isArray(p.tags) ? p.tags.join(', ') : '',
-      accountInfo: { ...emptyForm.accountInfo, ...(p.accountInfo || {}) },
+      accountInfo: {
+        ...emptyForm.accountInfo,
+        ...(p.accountInfo || {}),
+        images: Array.isArray(p.accountInfo?.images) ? p.accountInfo.images : [],
+      },
       vpsInfo: { ...emptyForm.vpsInfo, ...(p.vpsInfo || {}) },
     });
     setModalOpen(true);
@@ -110,6 +124,9 @@ export default function AdminProducts() {
         items: form.accountInfo.items?.trim(),
         loginMethod: form.accountInfo.loginMethod?.trim(),
         extras: form.accountInfo.extras?.trim(),
+        images: Array.isArray(form.accountInfo.images)
+          ? form.accountInfo.images.map((img) => String(img || '').trim()).filter(Boolean)
+          : [],
       };
       base.vpsInfo = undefined;
     } else {
@@ -161,6 +178,18 @@ export default function AdminProducts() {
     }
   };
 
+  const onToggleActive = async (p) => {
+    const action = p.isActive ? 'ẩn' : 'kích hoạt lại';
+    if (!confirm(`Bạn muốn ${action} sản phẩm "${p.name}"?`)) return;
+    try {
+      await productAPI.toggleActive(p._id, !p.isActive);
+      toast.success(p.isActive ? 'Đã ẩn sản phẩm' : 'Đã kích hoạt lại sản phẩm ✅');
+      fetchData();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Thao tác thất bại');
+    }
+  };
+
   const onDelete = async (p) => {
     if (!confirm(`Xóa (ẩn) sản phẩm "${p.name}"?`)) return;
     try {
@@ -170,6 +199,36 @@ export default function AdminProducts() {
     } catch (e) {
       toast.error(e.response?.data?.message || 'Xóa thất bại');
     }
+  };
+
+  const onPickGameImages = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    try {
+      const dataUrls = await Promise.all(files.map((file) => readFileAsDataUrl(file)));
+      setForm((s) => ({
+        ...s,
+        accountInfo: {
+          ...s.accountInfo,
+          images: [...(s.accountInfo.images || []), ...dataUrls],
+        },
+      }));
+    } catch (e) {
+      toast.error(e.message || 'Không thể đọc ảnh từ máy');
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const removeGameImage = (indexToRemove) => {
+    setForm((s) => ({
+      ...s,
+      accountInfo: {
+        ...s.accountInfo,
+        images: (s.accountInfo.images || []).filter((_, index) => index !== indexToRemove),
+      },
+    }));
   };
 
   return (
@@ -267,6 +326,16 @@ export default function AdminProducts() {
                           className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition-all inline-flex items-center gap-2"
                         >
                           <FiEdit2 /> Sửa
+                        </button>
+                        <button
+                          onClick={() => onToggleActive(p)}
+                          className={`px-3 py-2 rounded-xl border transition-all inline-flex items-center gap-2 ${p.isActive
+                            ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20'
+                            : 'bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20'
+                            }`}
+                        >
+                          {p.isActive ? <FiToggleRight className="text-base" /> : <FiToggleLeft className="text-base" />}
+                          {p.isActive ? 'Ẩn' : 'KH'}
                         </button>
                         <button
                           onClick={() => onDelete(p)}
@@ -395,6 +464,33 @@ export default function AdminProducts() {
               <Field label="Vật phẩm" value={form.accountInfo.items} onChange={(v) => setForm((s) => ({ ...s, accountInfo: { ...s.accountInfo, items: v } }))} />
               <Field label="Login method" value={form.accountInfo.loginMethod} onChange={(v) => setForm((s) => ({ ...s, accountInfo: { ...s.accountInfo, loginMethod: v } }))} />
               <Field label="Extras" value={form.accountInfo.extras} onChange={(v) => setForm((s) => ({ ...s, accountInfo: { ...s.accountInfo, extras: v } }))} />
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">Ảnh game account (chọn từ máy)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={onPickGameImages}
+                  className="input-field file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-primary-500/20 file:text-primary-300"
+                />
+                <p className="text-white/40 text-xs mt-2">Bạn có thể chọn nhiều ảnh cùng lúc. Ảnh sẽ được lưu và hiển thị ngay sau khi thêm/sửa.</p>
+                {(form.accountInfo.images || []).length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+                    {form.accountInfo.images.map((img, index) => (
+                      <div key={`${index}-${img.slice(0, 30)}`} className="relative rounded-xl overflow-hidden border border-white/10">
+                        <img src={img} alt={`Game ${index + 1}`} className="w-full h-20 object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeGameImage(index)}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-xs hover:bg-red-500/80 transition-colors"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="glass-card p-4 space-y-4">

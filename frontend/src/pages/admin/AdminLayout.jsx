@@ -4,9 +4,9 @@ import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   FiGrid, FiPackage, FiShoppingBag, FiUsers, FiLogOut,
-  FiMenu, FiChevronRight,
+  FiMenu, FiChevronRight, FiHome,
 } from 'react-icons/fi';
-import { HiSparkles } from 'react-icons/hi';
+import logo from '../../assets/logo.png';
 
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: FiGrid, exact: true },
@@ -30,9 +30,7 @@ const AdminLayout = () => {
       {/* Logo */}
       <div className="p-6 border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-accent-500 rounded-xl flex items-center justify-center shadow-glow-primary">
-            <HiSparkles className="text-white text-lg" />
-          </div>
+          <img src={logo} alt="DK logo" className="w-9 h-9 rounded-xl object-cover shadow-glow-primary" />
           <div>
             <p className="text-white font-bold text-sm">DuongKa Admin</p>
             <p className="text-white/40 text-xs">{user?.username}</p>
@@ -62,8 +60,14 @@ const AdminLayout = () => {
         ))}
       </nav>
 
-      {/* Logout */}
-      <div className="p-4 border-t border-white/5">
+      {/* Bottom actions */}
+      <div className="p-4 border-t border-white/5 space-y-1">
+        <button
+          onClick={() => { setSidebarOpen(false); navigate('/'); }}
+          className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-primary-400 hover:bg-primary-500/10 transition-all"
+        >
+          <FiHome /> Về Trang Chủ
+        </button>
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-all"
@@ -105,9 +109,9 @@ const AdminLayout = () => {
             <p className="text-white/60 text-sm">Xin chào, <span className="text-white font-semibold">{user?.username}</span> 👋</p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-white/40 text-xs">Online</span>
-          </div>
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              <span className="text-white/40 text-xs">Online</span>
+            </div>
         </header>
 
         {/* Page content */}

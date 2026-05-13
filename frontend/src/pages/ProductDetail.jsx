@@ -35,6 +35,11 @@ const ProductDetail = () => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [id]);
 
   useEffect(() => {
     const fetch = async () => {
@@ -69,6 +74,7 @@ const ProductDetail = () => {
 
   const isGame = product.type === 'game_account';
   const inCart = isInCart(product._id);
+  const gameImages = isGame && Array.isArray(product.accountInfo?.images) ? product.accountInfo.images : [];
 
   return (
     <div className="min-h-screen pt-24 pb-16">
@@ -80,37 +86,63 @@ const ProductDetail = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left: Banner */}
-          <div className={`rounded-2xl overflow-hidden h-64 lg:h-auto flex items-center justify-center relative ${
-            isGame
-              ? 'bg-gradient-to-br from-red-500/20 via-orange-500/10 to-yellow-500/5'
-              : 'bg-gradient-to-br from-primary-500/20 via-blue-500/10 to-accent-500/5'
-          }`}>
-            <div className="absolute inset-0 opacity-10"
-              style={{
-                backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
-                backgroundSize: '25px 25px',
-              }}
-            />
-            {isGame
-              ? <FaGamepad className="text-[120px] text-red-400/50" />
-              : <FiServer   className="text-[120px] text-primary-400/50" />
-            }
-            {/* Type badge */}
-            <div className="absolute top-4 left-4">
-              <span className={isGame ? 'badge-game' : 'badge-vps'}>
-                {isGame ? '🎮 Game Account' : '🖥️ VPS'}
-              </span>
-            </div>
-            {/* Stock badge */}
-            <div className="absolute top-4 right-4">
-              {product.stock === 0 ? (
-                <span className="badge bg-red-500/30 text-red-400 border border-red-500/30">Hết hàng</span>
-              ) : product.stock <= 3 ? (
-                <span className="badge bg-orange-500/30 text-orange-400 border border-orange-500/30">Còn {product.stock}</span>
+          <div>
+            <div className={`rounded-2xl overflow-hidden h-64 lg:h-auto flex items-center justify-center relative ${
+              isGame
+                ? 'bg-gradient-to-br from-red-500/20 via-orange-500/10 to-yellow-500/5'
+                : 'bg-gradient-to-br from-primary-500/20 via-blue-500/10 to-accent-500/5'
+            }`}>
+              {isGame && gameImages.length > 0 ? (
+                <img
+                  src={gameImages[activeImageIndex] || gameImages[0]}
+                  alt={`${product.name} ${activeImageIndex + 1}`}
+                  className="w-full h-full object-cover"
+                />
               ) : (
-                <span className="badge bg-green-500/30 text-green-400 border border-green-500/30">Còn hàng</span>
+                <>
+                  <div className="absolute inset-0 opacity-10"
+                    style={{
+                      backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
+                      backgroundSize: '25px 25px',
+                    }}
+                  />
+                  {isGame
+                    ? <FaGamepad className="text-[120px] text-red-400/50" />
+                    : <FiServer className="text-[120px] text-primary-400/50" />
+                  }
+                </>
               )}
+              {/* Type badge */}
+              <div className="absolute top-4 left-4">
+                <span className={isGame ? 'badge-game' : 'badge-vps'}>
+                  {isGame ? '🎮 Game Account' : '🖥️ VPS'}
+                </span>
+              </div>
+              {/* Stock badge */}
+              <div className="absolute top-4 right-4">
+                {product.stock === 0 ? (
+                  <span className="badge bg-red-500/30 text-red-400 border border-red-500/30">Hết hàng</span>
+                ) : product.stock <= 3 ? (
+                  <span className="badge bg-orange-500/30 text-orange-400 border border-orange-500/30">Còn {product.stock}</span>
+                ) : (
+                  <span className="badge bg-green-500/30 text-green-400 border border-green-500/30">Còn hàng</span>
+                )}
+              </div>
             </div>
+            {isGame && gameImages.length > 1 && (
+              <div className="grid grid-cols-4 gap-2 mt-3">
+                {gameImages.map((img, index) => (
+                  <button
+                    key={`${img}-${index}`}
+                    type="button"
+                    onClick={() => setActiveImageIndex(index)}
+                    className={`rounded-lg overflow-hidden border ${activeImageIndex === index ? 'border-primary-400' : 'border-white/10'}`}
+                  >
+                    <img src={img} alt={`${product.name} thumb ${index + 1}`} className="w-full h-16 object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right: Details */}

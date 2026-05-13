@@ -50,16 +50,18 @@ export const authAPI = {
   login:          (data) => api.post('/auth/login', data),
   getProfile:     ()     => api.get('/auth/me'),
   changePassword: (data) => api.put('/auth/change-password', data),
+  forgotPassword: (data) => api.post('/auth/forgot-password', data),
 };
 
 // ─── Product API ─────────────────────────────────────────────────────────────
 export const productAPI = {
-  getAll:     (params) => api.get('/products', { params }),
-  getById:    (id)     => api.get(`/products/${id}`),
-  getAllAdmin: (params) => api.get('/products/admin/all', { params }),
-  create:     (data)   => api.post('/products', data),
-  update:     (id, data) => api.put(`/products/${id}`, data),
-  delete:     (id)     => api.delete(`/products/${id}`),
+  getAll:       (params)     => api.get('/products', { params }),
+  getById:      (id)         => api.get(`/products/${id}`),
+  getAllAdmin:   (params)     => api.get('/products/admin/all', { params }),
+  create:       (data)       => api.post('/products', data),
+  update:       (id, data)   => api.put(`/products/${id}`, data),
+  delete:       (id)         => api.delete(`/products/${id}`),
+  toggleActive: (id, active) => api.put(`/products/${id}`, { isActive: active }),
 };
 
 // ─── Order API ───────────────────────────────────────────────────────────────

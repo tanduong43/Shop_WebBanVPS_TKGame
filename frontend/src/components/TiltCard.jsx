@@ -1,13 +1,20 @@
-import { useRef } from 'react';
+import { useRef, forwardRef } from 'react';
 
-const TiltCard = ({
+const TiltCard = forwardRef(function TiltCard({
   children,
   className = '',
   maxTilt = 12,
   perspective = 1000,
   scale = 1.02,
-}) => {
+}, externalRef) {
   const cardRef = useRef(null);
+
+  // Gán cả internal ref lẫn external ref
+  const setRef = (el) => {
+    cardRef.current = el;
+    if (typeof externalRef === 'function') externalRef(el);
+    else if (externalRef) externalRef.current = el;
+  };
 
   const handlePointerMove = (event) => {
     const card = cardRef.current;
@@ -34,7 +41,7 @@ const TiltCard = ({
 
   return (
     <div
-      ref={cardRef}
+      ref={setRef}
       className={`tilt-card ${className}`}
       onPointerMove={handlePointerMove}
       onPointerLeave={resetTransform}
@@ -43,6 +50,6 @@ const TiltCard = ({
       {children}
     </div>
   );
-};
+});
 
 export default TiltCard;

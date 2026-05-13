@@ -1,7 +1,7 @@
 // routes/authRoutes.js - Các route xác thực
 const express = require('express');
 const router = express.Router();
-const { register, login, getProfile, changePassword } = require('../controllers/authController');
+const { register, login, getProfile, changePassword, forgotPassword } = require('../controllers/authController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { registerValidation, loginValidation } = require('../middlewares/validate');
 
@@ -16,5 +16,8 @@ router.get('/me', authMiddleware, getProfile);
 
 // PUT /api/auth/change-password - Đổi mật khẩu
 router.put('/change-password', authMiddleware, changePassword);
+
+// POST /api/auth/forgot-password - Quên mật khẩu
+router.post('/forgot-password', forgotPassword);
 
 module.exports = router;

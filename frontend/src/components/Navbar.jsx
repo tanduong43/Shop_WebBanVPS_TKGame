@@ -5,9 +5,9 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import {
   FiShoppingCart, FiLogOut, FiMenu, FiX,
-  FiShield, FiPackage, FiHome, FiGrid,
+  FiShield, FiPackage, FiHome, FiGrid, FiUser,
 } from 'react-icons/fi';
-import { HiSparkles } from 'react-icons/hi';
+import logo from '../assets/logo.png';
 
 const Navbar = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
@@ -43,9 +43,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-accent-500 rounded-xl flex items-center justify-center group-hover:shadow-glow-primary transition-all duration-300">
-              <HiSparkles className="text-white text-lg" />
-            </div>
+            <img src={logo} alt="DK logo" className="w-9 h-9 rounded-xl object-cover group-hover:shadow-glow-primary transition-all duration-300" />
             <span className="text-xl font-bold gradient-text hidden sm:block">DuongKa</span>
           </Link>
 
@@ -120,6 +118,13 @@ const Navbar = () => {
                           <FiShield /> Trang Admin
                         </Link>
                       )}
+                      <Link
+                        to="/profile"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-white/70 hover:bg-white/5 rounded-lg transition-colors"
+                      >
+                        <FiUser /> Hồ Sơ
+                      </Link>
                       <Link
                         to="/orders"
                         onClick={() => setIsUserMenuOpen(false)}

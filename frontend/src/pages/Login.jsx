@@ -1,9 +1,10 @@
 // src/pages/Login.jsx - Trang đăng nhập
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
+import { authAPI } from '../services/api';
 import { toast } from 'react-toastify';
 
 const Login = () => {
@@ -12,10 +13,15 @@ const Login = () => {
   const location = useLocation();
   const from = location.state?.from?.pathname || '/';
 
-  const [form, setForm] = useState({ email: '', password: '' }); // email = email hoặc username
+  const [form, setForm] = useState({ email: '', password: '' });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // Forgot password state
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const validate = () => {
     const e = {};
@@ -36,6 +42,25 @@ const Login = () => {
       toast.error(err.response?.data?.message || 'Đăng nhập thất bại');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail) {
+      toast.error('Vui lòng nhập email của bạn');
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      await authAPI.forgotPassword({ email: forgotEmail });
+      toast.success('Mật khẩu mới đã được gửi tới email của bạn!');
+      setIsForgotPassword(false);
+      setForgotEmail('');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại');
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -97,6 +122,17 @@ const Login = () => {
               {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
             </div>
 
+            {/* Quên mật khẩu */}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsForgotPassword(true)}
+                className="text-sm text-primary-400 hover:text-primary-300 transition-colors"
+              >
+                Quên mật khẩu?
+              </button>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
@@ -115,6 +151,60 @@ const Login = () => {
             </Link>
           </p>
         </div>
+
+        {/* Modal Quên mật khẩu */}
+        {isForgotPassword && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="glass-card p-8 w-full max-w-md relative animate-slide-up">
+              <button
+                onClick={() => setIsForgotPassword(false)}
+                className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors text-xl"
+              >
+                &times;
+              </button>
+              <h2 className="text-2xl font-bold text-white mb-2">Khôi Phục Mật Khẩu</h2>
+              <p className="text-white/50 text-sm mb-6">
+                Nhập email của bạn để nhận mật khẩu mới.
+              </p>
+              
+              <form onSubmit={handleForgotPassword} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-2">Email của bạn</label>
+                  <div className="relative">
+                    <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+                    <input
+                      type="email"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      placeholder="example@email.com"
+                      className="input-field pl-11"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPassword(false)}
+                    className="btn-secondary flex-1 py-3"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="btn-primary flex-1 flex items-center justify-center gap-2 py-3"
+                  >
+                    {forgotLoading ? (
+                      <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang gửi...</>
+                    ) : 'Xác nhận'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Demo hint 
         <div className="mt-4 glass-card p-4 text-xs text-white/40">

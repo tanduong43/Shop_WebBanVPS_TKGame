@@ -1,5 +1,5 @@
 // src/pages/Home.jsx - Trang chủ
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { productAPI } from '../services/api';
 import ProductCard from '../components/ProductCard';
@@ -12,15 +12,60 @@ import {
 import { HiSparkles } from 'react-icons/hi';
 import { FaGamepad } from 'react-icons/fa';
 
-const StatCard = ({ icon: Icon, value, label, color }) => (
-  <TiltCard className="glass-card p-5 text-center group hover:scale-105 transition-transform duration-300">
-    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 ${color}`}>
-      <Icon className="text-2xl text-white" />
+// Tách số và hậu tố: "100+" → { target: 100, suffix: "+" }, "100%" → { target: 100, suffix: "%" }
+const parseValue = (val) => {
+  const match = String(val).match(/^([\d.]+)([^\d.]*)$/);
+  if (!match) return { target: 0, suffix: val };
+  return { target: parseFloat(match[1]), suffix: match[2] };
+};
+
+const StatCard = ({ icon: Icon, value, label, color }) => {
+  const { target, suffix } = parseValue(value);
+  const [count, setCount] = useState(0);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        observer.disconnect(); // chỉ chạy 1 lần
+        const duration = 1500;
+        const steps = 60;
+        const stepTime = duration / steps;
+        const increment = target / steps;
+        let current = 0;
+        const timer = setInterval(() => {
+          current += increment;
+          if (current >= target) {
+            setCount(target);
+            clearInterval(timer);
+          } else {
+            setCount(Math.floor(current));
+          }
+        }, stepTime);
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div ref={wrapRef}>
+      <TiltCard className="glass-card p-5 text-center group hover:scale-105 transition-transform duration-300">
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 ${color}`}>
+          <Icon className="text-2xl text-white" />
+        </div>
+        <p className="text-2xl font-bold gradient-text">
+          {count}{suffix}
+        </p>
+        <p className="text-white/50 text-sm mt-1">{label}</p>
+      </TiltCard>
     </div>
-    <p className="text-2xl font-bold gradient-text">{value}</p>
-    <p className="text-white/50 text-sm mt-1">{label}</p>
-  </TiltCard>
-);
+  );
+};
 
 const FeatureCard = ({ icon: Icon, title, description, color }) => (
   <TiltCard className="glass-card-hover p-6">
@@ -92,9 +137,9 @@ const Home = () => {
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-16 max-w-3xl mx-auto animate-fade-in">
             <StatCard icon={FaGamepad} value="50+" label="Game Account" color="bg-gradient-to-br from-red-500 to-orange-500" />
-            <StatCard icon={FiServer}  value="20+" label="VPS Plans"     color="bg-gradient-to-br from-primary-500 to-accent-500" />
-            <StatCard icon={FiStar}    value="100+" label="Khách Hàng"   color="bg-gradient-to-br from-yellow-500 to-orange-500" />
-            <StatCard icon={FiShield}  value="99%" label="Uy Tín"        color="bg-gradient-to-br from-green-500 to-teal-500" />
+            <StatCard icon={FiServer} value="20+" label="VPS Plans" color="bg-gradient-to-br from-primary-500 to-accent-500" />
+            <StatCard icon={FiStar} value="100+" label="Khách Hàng" color="bg-gradient-to-br from-yellow-500 to-orange-500" />
+            <StatCard icon={FiShield} value="100%" label="Uy Tín" color="bg-gradient-to-br from-green-500 to-teal-500" />
           </div>
         </div>
       </section>
@@ -106,13 +151,13 @@ const Home = () => {
           <p className="text-white/50">Cam kết chất lượng và trải nghiệm mua sắm tốt nhất</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <FeatureCard icon={FiShield}  color="bg-gradient-to-br from-green-500/80 to-teal-600/80"
+          <FeatureCard icon={FiShield} color="bg-gradient-to-br from-green-500/80 to-teal-600/80"
             title="Bảo Hành Rõ Ràng" description="Mỗi sản phẩm đều có chính sách bảo hành cụ thể. Cam kết hoàn tiền nếu có lỗi từ phía chúng tôi." />
-          <FeatureCard icon={FiZap}     color="bg-gradient-to-br from-yellow-500/80 to-orange-600/80"
-            title="Giao Hàng Nhanh"  description="Nhận thông tin tài khoản ngay sau khi xác nhận đơn hàng. Nhanh nhất 5 phút qua Zalo." />
+          <FeatureCard icon={FiZap} color="bg-gradient-to-br from-yellow-500/80 to-orange-600/80"
+            title="Giao Hàng Nhanh" description="Nhận thông tin tài khoản ngay sau khi xác nhận đơn hàng. Nhanh nhất 5 phút qua Zalo." />
           <FeatureCard icon={FiMessageCircle} color="bg-gradient-to-br from-primary-500/80 to-accent-600/80"
-            title="Hỗ Trợ 24/7"     description="Đội ngũ hỗ trợ luôn sẵn sàng qua Zalo. Giải quyết mọi vấn đề trong vòng 30 phút." />
-          <FeatureCard icon={FiStar}   color="bg-gradient-to-br from-purple-500/80 to-pink-600/80"
+            title="Hỗ Trợ 24/7" description="Đội ngũ hỗ trợ luôn sẵn sàng qua Zalo. Giải quyết mọi vấn đề trong vòng 30 phút." />
+          <FeatureCard icon={FiStar} color="bg-gradient-to-br from-purple-500/80 to-pink-600/80"
             title="Uy Tín Hàng Đầu" description="Hơn 500+ đơn hàng thành công. Được khách hàng tin tưởng và đánh giá 5 sao." />
         </div>
       </section>

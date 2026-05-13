@@ -15,7 +15,7 @@ const seedUsers = [
     role: 'admin',
   },
   {
-    username: ' ',
+    username: 'test@123',
     email: 'testuser@example.com',
     password: 'Test@123',
     role: 'user',

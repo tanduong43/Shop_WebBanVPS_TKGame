@@ -77,6 +77,12 @@ const productValidation = [
   body('description')
     .optional()
     .isLength({ max: 1000 }).withMessage('Mô tả không quá 1000 ký tự'),
+  body('accountInfo.images')
+    .optional()
+    .isArray().withMessage('Danh sách ảnh phải là mảng'),
+  body('accountInfo.images.*')
+    .optional()
+    .isString().withMessage('Mỗi ảnh phải là chuỗi URL'),
   handleValidationErrors,
 ];
 
