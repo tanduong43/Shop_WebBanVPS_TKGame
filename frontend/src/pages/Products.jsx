@@ -13,6 +13,8 @@ import { FiServer } from 'react-icons/fi';
 
 const PRICE_RANGES = [
   { label: 'Tất cả', min: '', max: '' },
+  { label: 'Dưới 50K',   min: 0,      max: 50000 },
+  { label: 'Dưới 100K',  min: 0,      max: 100000 },
   { label: 'Dưới 200K',  min: 0,      max: 200000 },
   { label: '200K - 500K',min: 200000,  max: 500000 },
   { label: '500K - 1M',  min: 500000,  max: 1000000 },
