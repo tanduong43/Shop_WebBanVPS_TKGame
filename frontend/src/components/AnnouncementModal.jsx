@@ -28,15 +28,16 @@ const ANNOUNCEMENT = {
     //   label: 'Uptime',
     //   value: '99.9% – Ổn định 24/7',
     // },
+
     {
       icon: '💬',
       label: 'Hỗ trợ',
-      value: 'Vui lòng đợi vài giây để hệ thống hiện thông tin sản phẩm',
+      value: 'Hệ thống có hỗ trợ dịch vụ đăng bán hộ account game. Khi thực hiện giao dịch, vui lòng liên hệ trực tiếp admin của game để được hỗ trợ và hạn chế rủi ro lừa đảo. Website sẽ không chịu trách nhiệm đối với các trường hợp người dùng bị scam hoặc phát sinh tranh chấp trong quá trình giao dịch.',
     },
     {
       icon: '💬',
       label: 'Hỗ trợ',
-      value: 'Hiện tại một ip chỉ tạo được 1 tài khoản và chỉ đăng nhập được dưới 3 tài khoản',
+      value: 'Hiện tại một ip chỉ tạo được 3 tài khoản trong 1 ngày và chỉ đăng nhập được dưới 3 tài khoản',
     },
     {
       icon: '💬',
