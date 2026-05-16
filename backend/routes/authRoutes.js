@@ -1,9 +1,19 @@
 // routes/authRoutes.js - Các route xác thực
 const express = require('express');
-const router = express.Router();
-const { register, login, getProfile, changePassword, forgotPassword } = require('../controllers/authController');
+const router  = express.Router();
+const {
+  getCaptcha,
+  register,
+  login,
+  getProfile,
+  changePassword,
+  forgotPassword,
+} = require('../controllers/authController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { registerValidation, loginValidation } = require('../middlewares/validate');
+
+// GET /api/auth/captcha - Lấy câu hỏi CAPTCHA toán học
+router.get('/captcha', getCaptcha);
 
 // POST /api/auth/register - Đăng ký
 router.post('/register', registerValidation, register);

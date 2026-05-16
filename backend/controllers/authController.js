@@ -1,9 +1,33 @@
 // controllers/authController.js - Xử lý xác thực người dùng
-const User = require('../models/User');
-const { generateToken } = require('../utils/generateToken');
-const { successResponse, errorResponse } = require('../utils/apiResponse');
+const User            = require('../models/User');
+const CaptchaToken    = require('../models/CaptchaToken');
+const RegistrationLog = require('../models/RegistrationLog');
+const { generateToken }                    = require('../utils/generateToken');
+const { successResponse, errorResponse }   = require('../utils/apiResponse');
 const nodemailer = require('nodemailer');
 
+// ─── Hằng số giới hạn đăng ký ────────────────────────────────────────────────
+const MAX_ACCOUNTS_PER_DAY = 3;
+const MIN_GAP_MS           = 60 * 60 * 1000; // 1 tiếng
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Lấy IP thực (hỗ trợ proxy / nginx / Render / Railway) */
+const getClientIp = (req) => {
+  const fwd = req.headers['x-forwarded-for'];
+  if (fwd) return fwd.split(',')[0].trim();
+  return req.socket?.remoteAddress || 'unknown';
+};
+
+/** Trả về chuỗi ngày 'YYYY-MM-DD' theo giờ Việt Nam */
+const getTodayVN = () => {
+  const now = new Date();
+  // UTC+7
+  const vn = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+  return vn.toISOString().slice(0, 10);
+};
+
+// ─── Email ────────────────────────────────────────────────────────────────────
 const normalizeEnv = (value) => {
   let s = String(value ?? '').trim();
   if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
@@ -14,8 +38,7 @@ const normalizeEnv = (value) => {
 
 const createMailTransporter = () => {
   const emailUser = normalizeEnv(process.env.EMAIL_USER).toLowerCase();
-  // App password hay có dấu cách nhóm 4 ký tự; đôi khi .env có ngoặc kép hoặc ký tự ẩn.
-  let emailPass = normalizeEnv(process.env.EMAIL_PASS);
+  let emailPass   = normalizeEnv(process.env.EMAIL_PASS);
   emailPass = emailPass.replace(/\s+/g, '');
 
   if (!emailUser || !emailPass) {
@@ -26,12 +49,48 @@ const createMailTransporter = () => {
     host: 'smtp.gmail.com',
     port: 465,
     secure: true,
-    auth: {
-      user: emailUser,
-      pass: emailPass,
-    },
+    auth: { user: emailUser, pass: emailPass },
   });
 };
+
+// ─── CAPTCHA ──────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/auth/captcha
+ * Tạo câu hỏi toán ngẫu nhiên, lưu đáp án vào MongoDB, trả về { captchaId, question }
+ */
+const getCaptcha = async (req, res, next) => {
+  try {
+    const ops = ['+', '-', '×'];
+    const op  = ops[Math.floor(Math.random() * ops.length)];
+
+    let a, b, answer;
+    if (op === '+') {
+      a = Math.floor(Math.random() * 20) + 1; // 1–20
+      b = Math.floor(Math.random() * 20) + 1;
+      answer = a + b;
+    } else if (op === '-') {
+      a = Math.floor(Math.random() * 20) + 10; // 10–29
+      b = Math.floor(Math.random() * a) + 1;   // b < a → kết quả dương
+      answer = a - b;
+    } else {
+      a = Math.floor(Math.random() * 9) + 2;  // 2–10
+      b = Math.floor(Math.random() * 9) + 2;
+      answer = a * b;
+    }
+
+    const captcha = await CaptchaToken.create({ answer });
+
+    return successResponse(res, {
+      captchaId: captcha._id,
+      question: `${a} ${op} ${b} = ?`,
+    }, 'Tạo CAPTCHA thành công');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── Register ─────────────────────────────────────────────────────────────────
 
 /**
  * POST /api/auth/register
@@ -39,41 +98,93 @@ const createMailTransporter = () => {
  */
 const register = async (req, res, next) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, captchaId, captchaAnswer } = req.body;
 
-    // Kiểm tra email đã tồn tại chưa
+    // ── 1. Kiểm tra CAPTCHA ──────────────────────────────────────────────────
+    if (!captchaId || captchaAnswer === undefined || captchaAnswer === '') {
+      return errorResponse(res, 'Vui lòng hoàn thành xác minh CAPTCHA', 400);
+    }
+
+    const captcha = await CaptchaToken.findById(captchaId);
+    if (!captcha) {
+      return errorResponse(res, 'CAPTCHA đã hết hạn. Vui lòng làm mới và thử lại.', 400);
+    }
+    if (captcha.used) {
+      return errorResponse(res, 'CAPTCHA này đã được sử dụng. Vui lòng làm mới CAPTCHA.', 400);
+    }
+    if (Number(captchaAnswer) !== captcha.answer) {
+      // Không xóa captcha → cho phép thử lại
+      return errorResponse(res, 'Đáp án CAPTCHA không đúng. Vui lòng thử lại.', 400);
+    }
+
+    // Đánh dấu đã dùng
+    captcha.used = true;
+    await captcha.save();
+
+    // ── 2. Kiểm tra giới hạn đăng ký theo IP (MongoDB) ──────────────────────
+    const ip    = getClientIp(req);
+    const today = getTodayVN();
+    const now   = Date.now();
+
+    let log = await RegistrationLog.findOne({ ip, date: today });
+
+    if (log) {
+      // Kiểm tra số lượng
+      if (log.timestamps.length >= MAX_ACCOUNTS_PER_DAY) {
+        return errorResponse(
+          res,
+          `Mỗi địa chỉ IP chỉ được tạo tối đa ${MAX_ACCOUNTS_PER_DAY} tài khoản trong 1 ngày. Vui lòng thử lại vào ngày mai.`,
+          429
+        );
+      }
+
+      // Kiểm tra khoảng cách
+      const lastTime = log.timestamps[log.timestamps.length - 1];
+      const elapsed  = now - lastTime;
+      if (elapsed < MIN_GAP_MS) {
+        const waitMin = Math.ceil((MIN_GAP_MS - elapsed) / 60000);
+        return errorResponse(
+          res,
+          `Bạn vừa tạo tài khoản. Vui lòng chờ thêm ${waitMin} phút nữa mới có thể tạo tài khoản tiếp theo.`,
+          429
+        );
+      }
+    }
+
+    // ── 3. Kiểm tra email / username đã tồn tại chưa ────────────────────────
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
       const field = existingUser.email === email ? 'Email' : 'Username';
       return errorResponse(res, `${field} đã được sử dụng`, 409);
     }
 
-    // Tạo user mới (password sẽ được hash trong pre-save hook)
-    const user = await User.create({ username, email, password });
-
-    // Tạo token
+    // ── 4. Tạo user mới ──────────────────────────────────────────────────────
+    const user  = await User.create({ username, email, password });
     const token = generateToken({ id: user._id, role: user.role });
 
-    return successResponse(
-      res,
-      { user: user.toJSON(), token },
-      'Đăng ký thành công',
-      201
-    );
+    // ── 5. Ghi log IP vào MongoDB ────────────────────────────────────────────
+    if (log) {
+      log.timestamps.push(now);
+      await log.save();
+    } else {
+      await RegistrationLog.create({ ip, date: today, timestamps: [now] });
+    }
+
+    return successResponse(res, { user: user.toJSON(), token }, 'Đăng ký thành công', 201);
   } catch (error) {
     next(error);
   }
 };
 
+// ─── Login ────────────────────────────────────────────────────────────────────
+
 /**
  * POST /api/auth/login
- * Đăng nhập
  */
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body; // "email" có thể là email hoặc username
+    const { email, password } = req.body;
 
-    // Lấy user kèm password (select: false nên phải chỉ định rõ)
     const identifier = String(email || '').trim();
     const user = await User.findOne({
       $or: [
@@ -81,45 +192,43 @@ const login = async (req, res, next) => {
         { username: identifier },
       ],
     }).select('+password');
+
     if (!user) {
       return errorResponse(res, 'Email/Username hoặc mật khẩu không đúng', 401);
     }
-
-    // Kiểm tra tài khoản bị vô hiệu hóa
     if (!user.isActive) {
       return errorResponse(res, 'Tài khoản đã bị vô hiệu hóa', 403);
     }
 
-    // So sánh password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return errorResponse(res, 'Email/Username hoặc mật khẩu không đúng', 401);
     }
 
     const token = generateToken({ id: user._id, role: user.role });
-
     return successResponse(res, { user: user.toJSON(), token }, 'Đăng nhập thành công');
   } catch (error) {
     next(error);
   }
 };
 
+// ─── Profile ──────────────────────────────────────────────────────────────────
+
 /**
  * GET /api/auth/me
- * Lấy thông tin người dùng hiện tại (cần authMiddleware)
  */
 const getProfile = async (req, res, next) => {
   try {
-    // req.user đã được gắn bởi authMiddleware
     return successResponse(res, req.user, 'Lấy thông tin thành công');
   } catch (error) {
     next(error);
   }
 };
 
+// ─── Change Password ──────────────────────────────────────────────────────────
+
 /**
  * PUT /api/auth/change-password
- * Đổi mật khẩu
  */
 const changePassword = async (req, res, next) => {
   try {
@@ -140,9 +249,10 @@ const changePassword = async (req, res, next) => {
   }
 };
 
+// ─── Forgot Password ──────────────────────────────────────────────────────────
+
 /**
  * POST /api/auth/forgot-password
- * Quên mật khẩu
  */
 const forgotPassword = async (req, res, next) => {
   try {
@@ -154,16 +264,11 @@ const forgotPassword = async (req, res, next) => {
       return errorResponse(res, 'Không tìm thấy người dùng với email này', 404);
     }
 
-    // Generate random 6-digit password
     const newPassword = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Update user password
     user.password = newPassword;
     await user.save();
 
-    // Send email
     const transporter = createMailTransporter();
-
     const mailOptions = {
       from: normalizeEnv(process.env.EMAIL_USER).toLowerCase(),
       to: email,
@@ -184,26 +289,19 @@ const forgotPassword = async (req, res, next) => {
     };
 
     await transporter.sendMail(mailOptions);
-
     return successResponse(res, null, 'Mật khẩu mới đã được gửi đến email của bạn');
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
-      // Không log mật khẩu; chỉ giúp chẩn đoán từ phía SMTP.
       console.error('[mail] SMTP error:', error.code, error.responseCode, error.response);
     }
-
     if (error?.code === 'EMISSING') {
       return errorResponse(res, 'Chưa cấu hình EMAIL_USER hoặc EMAIL_PASS trên server.', 500);
     }
     if (error?.code === 'EAUTH' || String(error?.message || '').includes('BadCredentials')) {
-      return errorResponse(
-        res,
-        'Gmail từ chối đăng nhập SMTP: App Password phải được tạo đúng tài khoản EMAIL_USER, bật 2 bước xác minh, và xóa tạo lại mật khẩu ứng dụng nếu cần. Tài khoản Google Workspace có thể bị admin tắt App Password.',
-        502
-      );
+      return errorResponse(res, 'Gmail từ chối đăng nhập SMTP.', 502);
     }
     next(error);
   }
 };
 
-module.exports = { register, login, getProfile, changePassword, forgotPassword };
+module.exports = { getCaptcha, register, login, getProfile, changePassword, forgotPassword };

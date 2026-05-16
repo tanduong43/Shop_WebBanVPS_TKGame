@@ -1,18 +1,44 @@
-// src/pages/Register.jsx - Trang đăng ký
-import { useState } from 'react';
+// src/pages/Register.jsx - Trang đăng ký với CAPTCHA toán học
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiCheck } from 'react-icons/fi';
+import { authAPI } from '../services/api';
+import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiCheck, FiRefreshCw } from 'react-icons/fi';
 import logo from '../assets/logo.png';
 import { toast } from 'react-toastify';
 
 const Register = () => {
   const { register } = useAuth();
   const navigate     = useNavigate();
+
   const [form, setForm]         = useState({ username: '', email: '', password: '', confirmPassword: '' });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading]   = useState(false);
   const [errors, setErrors]     = useState({});
+
+  // CAPTCHA state
+  const [captcha, setCaptcha]           = useState({ id: '', question: '' });
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
+  const [captchaLoading, setCaptchaLoading] = useState(false);
+
+  // Lấy CAPTCHA từ server
+  const fetchCaptcha = useCallback(async () => {
+    setCaptchaLoading(true);
+    setCaptchaAnswer('');
+    try {
+      const res = await authAPI.getCaptcha();
+      setCaptcha({
+        id: res.data.data.captchaId,
+        question: res.data.data.question,
+      });
+    } catch {
+      toast.error('Không thể tải CAPTCHA. Vui lòng thử lại.');
+    } finally {
+      setCaptchaLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchCaptcha(); }, [fetchCaptcha]);
 
   const validate = () => {
     const e = {};
@@ -21,6 +47,7 @@ const Register = () => {
     if (!form.email || !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Email không hợp lệ';
     if (!form.password || form.password.length < 6) e.password = 'Password phải có ít nhất 6 ký tự';
     if (form.password !== form.confirmPassword)     e.confirmPassword = 'Mật khẩu không khớp';
+    if (!captchaAnswer.trim())                      e.captcha = 'Vui lòng nhập đáp án CAPTCHA';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -30,10 +57,16 @@ const Register = () => {
     if (!validate()) return;
     setLoading(true);
     try {
-      await register(form.username, form.email, form.password);
+      await register(form.username, form.email, form.password, captcha.id, captchaAnswer.trim());
       navigate('/');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Đăng ký thất bại');
+      const msg = err.response?.data?.message || 'Đăng ký thất bại';
+      toast.error(msg);
+      // Nếu lỗi CAPTCHA → làm mới captcha
+      if (msg.toLowerCase().includes('captcha') || msg.toLowerCase().includes('đáp án')) {
+        fetchCaptcha();
+        setCaptchaAnswer('');
+      }
     } finally {
       setLoading(false);
     }
@@ -124,6 +157,52 @@ const Register = () => {
                 )}
               </div>
               {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword}</p>}
+            </div>
+
+            {/* ── CAPTCHA Toán Học ── */}
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-2">
+                Xác minh bảo mật
+              </label>
+              <div className="captcha-box">
+                {/* Hiển thị câu hỏi */}
+                <div className="captcha-question-row">
+                  <div className="captcha-question">
+                    {captchaLoading ? (
+                      <span className="captcha-loading">
+                        <span className="captcha-spin" />
+                        Đang tải...
+                      </span>
+                    ) : (
+                      <span className="captcha-question-text">{captcha.question}</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={fetchCaptcha}
+                    disabled={captchaLoading}
+                    className="captcha-refresh"
+                    title="Làm mới câu hỏi"
+                    id="captcha-refresh-btn"
+                  >
+                    <FiRefreshCw className={captchaLoading ? 'spin' : ''} />
+                  </button>
+                </div>
+                {/* Ô nhập đáp án */}
+                <input
+                  id="captcha-input"
+                  type="number"
+                  value={captchaAnswer}
+                  onChange={(e) => {
+                    setCaptchaAnswer(e.target.value);
+                    setErrors({ ...errors, captcha: '' });
+                  }}
+                  placeholder="Nhập kết quả..."
+                  className={`input-field mt-2 ${errors.captcha ? 'border-red-500/50' : ''}`}
+                  autoComplete="off"
+                />
+              </div>
+              {errors.captcha && <p className="text-red-400 text-xs mt-1">{errors.captcha}</p>}
             </div>
 
             <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2 py-3.5">

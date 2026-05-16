@@ -46,6 +46,7 @@ api.interceptors.response.use(
 
 // ─── Auth API ────────────────────────────────────────────────────────────────
 export const authAPI = {
+  getCaptcha:     ()     => api.get('/auth/captcha'),
   register:       (data) => api.post('/auth/register', data),
   login:          (data) => api.post('/auth/login', data),
   getProfile:     ()     => api.get('/auth/me'),

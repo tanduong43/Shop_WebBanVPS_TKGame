@@ -51,8 +51,8 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Đăng ký
-  const register = useCallback(async (username, email, password) => {
-    const res = await authAPI.register({ username, email, password });
+  const register = useCallback(async (username, email, password, captchaId, captchaAnswer) => {
+    const res = await authAPI.register({ username, email, password, captchaId, captchaAnswer });
     const { user: userData, token: userToken } = res.data.data;
     
     localStorage.setItem('token', userToken);

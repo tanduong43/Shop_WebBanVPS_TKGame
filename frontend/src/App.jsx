@@ -15,6 +15,7 @@ import Register from './pages/Register';
 import Orders from './pages/Orders';
 import Profile from './pages/Profile';
 import NeonFishSchool from './components/NeonFishSchool';
+import AnnouncementModal from './components/AnnouncementModal';
 
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/Dashboard';
@@ -83,6 +84,7 @@ const FloatingParticles = ({ count = 22 }) => {
 export default function App() {
   return (
     <>
+      <AnnouncementModal />
       <FloatingParticles />
 
       <NeonFishSchool />
