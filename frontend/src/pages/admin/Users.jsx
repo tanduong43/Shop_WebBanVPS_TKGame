@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { adminAPI } from '../../services/api';
 import { toast } from 'react-toastify';
-import { FiRefreshCw, FiSearch, FiTrash2, FiRotateCcw } from 'react-icons/fi';
+import { FiRefreshCw, FiSearch, FiTrash2, FiRotateCcw, FiPlusCircle, FiUser, FiInfo } from 'react-icons/fi';
 
 export default function AdminUsers() {
   const [items, setItems] = useState([]);
@@ -12,6 +12,16 @@ export default function AdminUsers() {
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+
+  // Modal điều chỉnh số dư ví user
+  const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [adjustForm, setAdjustForm] = useState({
+    userId: '',
+    username: '',
+    amount: '',
+    description: 'Điều chỉnh số dư ví bởi Admin',
+  });
+  const [adjustLoading, setAdjustLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -55,6 +65,42 @@ export default function AdminUsers() {
     }
   };
 
+  const openAdjustModal = (u) => {
+    setAdjustForm({
+      userId: u._id,
+      username: u.username,
+      amount: '',
+      description: 'Điều chỉnh số dư ví bởi Admin',
+    });
+    setShowAdjustModal(true);
+  };
+
+  const handleAdjustBalance = async (e) => {
+    e.preventDefault();
+    const amountVal = parseFloat(adjustForm.amount);
+
+    if (isNaN(amountVal) || amountVal === 0) {
+      toast.error('Số tiền phải là số hợp lệ và khác 0');
+      return;
+    }
+
+    setAdjustLoading(true);
+    try {
+      await adminAPI.adjustUserBalance(
+        adjustForm.userId,
+        amountVal,
+        adjustForm.description
+      );
+      toast.success(`Đã điều chỉnh thành công số dư cho user ${adjustForm.username}`);
+      setShowAdjustModal(false);
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Lỗi điều chỉnh số dư');
+    } finally {
+      setAdjustLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -89,6 +135,7 @@ export default function AdminUsers() {
               <tr className="text-left text-white/40">
                 <th className="p-4">Username</th>
                 <th className="p-4">Email</th>
+                <th className="p-4">Số dư</th>
                 <th className="p-4">Role</th>
                 <th className="p-4">Active</th>
                 <th className="p-4 text-right">Thao tác</th>
@@ -105,10 +152,15 @@ export default function AdminUsers() {
                 items.map((u) => (
                   <tr key={u._id} className="text-white/70">
                     <td className="p-4">
-                      <p className="text-white font-medium">{u.username}</p>
+                      <p className="text-white font-medium flex items-center gap-2">
+                        {u.username}
+                      </p>
                       <p className="text-white/40 text-xs">{new Date(u.createdAt).toLocaleDateString('vi-VN')}</p>
                     </td>
                     <td className="p-4">{u.email}</td>
+                    <td className="p-4 font-mono font-bold text-green-400">
+                      {(u.balance || 0).toLocaleString()}đ
+                    </td>
                     <td className="p-4">
                       <span className={`badge ${u.role === 'admin' ? 'badge-vps' : 'badge-game'}`}>
                         {u.role}
@@ -121,6 +173,12 @@ export default function AdminUsers() {
                     </td>
                     <td className="p-4">
                       <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => openAdjustModal(u)}
+                          className="px-3 py-2 rounded-xl bg-primary-500/10 border border-primary-500/20 text-primary-400 hover:bg-primary-500/20 transition-all inline-flex items-center gap-2"
+                        >
+                          <FiPlusCircle /> Cộng tiền
+                        </button>
                         {u.isActive ? (
                           <button
                             onClick={() => disableUser(u)}
@@ -171,6 +229,70 @@ export default function AdminUsers() {
           </div>
         )}
       </div>
+
+      {/* ── MODAL ĐIỀU CHỈNH SỐ DƯ VÍ ── */}
+      {showAdjustModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowAdjustModal(false)} />
+          <div className="relative glass-card p-6 w-full max-w-md animate-scale-in">
+            <h2 className="text-base font-bold text-white mb-2 flex items-center gap-2">
+              <FiUser className="text-primary-400" /> Điều Chỉnh Số Dư
+            </h2>
+            <p className="text-xs text-white/40 mb-6">
+              Bạn đang thay đổi số dư ví trực tiếp cho tài khoản: <span className="text-white font-bold">{adjustForm.username}</span>
+            </p>
+
+            <form onSubmit={handleAdjustBalance} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-white/60 mb-2">Số tiền muốn thay đổi (VNĐ)</label>
+                <input
+                  type="number"
+                  placeholder="Cộng tiền nhập số dương (e.g. 50000), trừ tiền nhập số âm (e.g. -50000)"
+                  value={adjustForm.amount}
+                  onChange={(e) => setAdjustForm({ ...adjustForm, amount: e.target.value })}
+                  className="input-field py-2 text-xs font-bold text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-white/60 mb-2">Lý do điều chỉnh</label>
+                <input
+                  type="text"
+                  value={adjustForm.description}
+                  onChange={(e) => setAdjustForm({ ...adjustForm, description: e.target.value })}
+                  className="input-field py-2 text-xs text-white/70"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/5 text-[10px] text-white/40">
+                <FiInfo className="text-sm text-primary-400 flex-shrink-0" />
+                <p>
+                  Việc điều chỉnh số dư sẽ lập tức ghi lại nhật ký biến động ví (Transaction). User sẽ nhận được thông báo biến động số dư realtime.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAdjustModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-white/5 text-white/60 hover:bg-white/10"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={adjustLoading}
+                  className="btn-primary px-5 py-2 text-xs font-bold hover:shadow-glow-primary"
+                >
+                  {adjustLoading ? 'Đang xử lý...' : 'Xác Nhận Thay Đổi'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

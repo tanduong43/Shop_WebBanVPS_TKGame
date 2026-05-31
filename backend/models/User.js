@@ -36,6 +36,11 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    balance: {
+      type: Number,
+      default: 0,
+      min: [0, 'Số dư không được âm'],
+    },
   },
   {
     timestamps: true, // Tự thêm createdAt, updatedAt

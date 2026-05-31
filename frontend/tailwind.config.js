@@ -62,6 +62,13 @@ export default {
         'pulse-slow':  'pulse 3s infinite',
         'float':       'float 6s ease-in-out infinite',
         'shimmer':     'shimmer 1.5s infinite',
+        'shake-dice':  'shakeDice 0.5s ease-in-out infinite',
+        'spin-slow':   'spin 3s linear infinite',
+        'bounce-in':   'bounceIn 0.5s cubic-bezier(0.68,-0.55,0.27,1.55)',
+        'scale-in':    'scaleIn 0.25s ease-out',
+        'ping-once':   'ping 0.5s ease-out 1',
+        'bowl-cover':  'bowlCover 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+        'bowl-uncover': 'bowlUncover 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards',
       },
       keyframes: {
         fadeIn: {
@@ -83,6 +90,36 @@ export default {
         shimmer: {
           '0%':   { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
+        },
+        shakeDice: {
+          '0%, 100%': { transform: 'translate(0, 0) rotate(0deg) scale(1)' },
+          '10%':      { transform: 'translate(-4px, -4px) rotate(-5deg) scale(1.05)' },
+          '20%':      { transform: 'translate(4px, -4px) rotate(5deg) scale(1.08)' },
+          '30%':      { transform: 'translate(-4px, 4px) rotate(-3deg) scale(1.05)' },
+          '40%':      { transform: 'translate(4px, 4px) rotate(3deg) scale(1.08)' },
+          '50%':      { transform: 'translate(-2px, -6px) rotate(-6deg) scale(1.1)' },
+          '60%':      { transform: 'translate(6px, -2px) rotate(6deg) scale(1.08)' },
+          '70%':      { transform: 'translate(-6px, 2px) rotate(-4deg) scale(1.05)' },
+          '80%':      { transform: 'translate(2px, 6px) rotate(4deg) scale(1.03)' },
+          '90%':      { transform: 'translate(-2px, -2px) rotate(-2deg) scale(1)' },
+        },
+        bounceIn: {
+          '0%':   { transform: 'scale(0.3)', opacity: '0' },
+          '60%':  { transform: 'scale(1.1)', opacity: '1' },
+          '80%':  { transform: 'scale(0.9)' },
+          '100%': { transform: 'scale(1)' },
+        },
+        scaleIn: {
+          '0%':   { transform: 'scale(0.8)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        bowlCover: {
+          '0%':   { transform: 'translateY(-100px) scale(1.2)', opacity: '0' },
+          '100%': { transform: 'translateY(0) scale(1)', opacity: '1' },
+        },
+        bowlUncover: {
+          '0%':   { transform: 'translateY(0) scale(1)', opacity: '1' },
+          '100%': { transform: 'translateY(-150px) scale(1.2)', opacity: '0' },
         },
       },
     },

@@ -14,6 +14,11 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Orders from './pages/Orders';
 import Profile from './pages/Profile';
+import Deposit from './pages/Deposit'; // Thêm Deposit
+import WheelPlay from './pages/WheelPlay';
+import Games from './pages/Games';
+import BauCua from './pages/BauCua';
+import Trivia from './pages/Trivia';
 import NeonFishSchool from './components/NeonFishSchool';
 import AnnouncementModal from './components/AnnouncementModal';
 
@@ -21,6 +26,10 @@ import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/Products';
 import AdminOrders from './pages/admin/Orders';
+import AdminDeposits from './pages/admin/Deposits'; // Thêm AdminDeposits
+import AdminWheels from './pages/admin/AdminWheels'; // Thêm AdminWheels
+import AdminSpinHistory from './pages/admin/AdminSpinHistory'; // Thêm AdminSpinHistory
+import AdminQuestions from './pages/admin/AdminQuestions';
 import AdminUsers from './pages/admin/Users';
 
 const PublicLayout = () => (
@@ -114,6 +123,47 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/deposit"
+            element={
+              <ProtectedRoute>
+                <Deposit />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/wheels"
+            element={
+              <ProtectedRoute>
+                <WheelPlay />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/games" element={<Games />} />
+          <Route
+            path="/games/bau-cua/:roomId"
+            element={
+              <ProtectedRoute>
+                <BauCua />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/games/wheel/:wheelId"
+            element={
+              <ProtectedRoute>
+                <WheelPlay />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/games/trivia"
+            element={
+              <ProtectedRoute>
+                <Trivia />
+              </ProtectedRoute>
+            }
+          />
         </Route>
 
         {/* Admin */}
@@ -128,6 +178,10 @@ export default function App() {
           <Route index element={<AdminDashboard />} />
           <Route path="products" element={<AdminProducts />} />
           <Route path="orders" element={<AdminOrders />} />
+          <Route path="deposits" element={<AdminDeposits />} />
+          <Route path="wheels" element={<AdminWheels />} />
+          <Route path="spins" element={<AdminSpinHistory />} />
+          <Route path="questions" element={<AdminQuestions />} />
           <Route path="users" element={<AdminUsers />} />
         </Route>
 

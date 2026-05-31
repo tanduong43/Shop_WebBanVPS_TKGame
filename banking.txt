@@ -1,0 +1,107 @@
+# Hướng Dẫn Kiểm Thử & Vận Hành: Nạp Tiền Tự Động Realtime qua VietQR
+
+Tôi đã hoàn thành việc tích hợp tính năng **Nạp tiền tự động Realtime qua Banking (VietQR + Socket.IO)** vào toàn bộ dự án của bạn (cả Backend và Frontend) theo đúng tiêu chuẩn cao nhất. 
+
+Để giúp bạn có thể **trải nghiệm và kiểm thử ngay lập tức (dùng được luôn)** trên môi trường máy tính cá nhân (localhost) mà không cần chuyển khoản tiền thật, tôi đã xây dựng bộ **Webhook Simulator (Giả lập ngân hàng)** rất trực quan.
+
+---
+
+## 🚀 Hướng dẫn Kiểm thử cục bộ (Sandbox Test)
+
+Để trải nghiệm tính năng chạy mượt mà ngay trên máy tính của bạn:
+
+1. **Khởi động Backend**:
+   Mở terminal tại thư mục `/backend` và chạy:
+   ```bash
+   npm run dev
+   ```
+   *Lưu ý:* Hệ thống sẽ tự động khởi động máy chủ HTTP cùng **Socket.IO Realtime** tại cổng `5000`.
+
+2. **Khởi động Frontend**:
+   Mở terminal tại thư mục `/frontend` và chạy:
+   ```bash
+   npm run dev
+   ```
+   *Giao diện chạy tại:* `http://localhost:5173`.
+
+3. **Thực hiện nạp tiền giả định (Khách hàng)**:
+   - Đăng nhập tài khoản User bình thường trên web của bạn.
+   - Bạn sẽ thấy **Số dư ví: 0đ** xuất hiện cực đẹp trên Navbar bên cạnh Avatar.
+   - Nhấp vào số dư hoặc nút **Nạp** -> Hệ thống chuyển sang trang nạp tiền `/deposit` với hiệu ứng Glassmorphism.
+   - Chọn hoặc nhập số tiền (Ví dụ: `100.000đ`) -> Nhấn **Tiếp Tục**.
+   - Màn hình sẽ lập tức sinh ra mã **VietQR động** cực kỳ sắc nét kèm thông tin tài khoản nhận mặc định và nội dung chuyển khoản tự động (Ví dụ: `WSAC 581923`).
+   - Màn hình hiển thị trạng thái chuyển động: *“Đang chờ hệ thống ngân hàng xác nhận...”* kèm vòng xoay loading.
+
+4. **Kích hoạt Webhook giả lập (Admin)**:
+   - Mở một trình duyệt khác (hoặc ẩn danh), đăng nhập bằng tài khoản Admin (`nguyenduong` / `Duong@43`).
+   - Truy cập vào **Trang Admin** -> Vào mục mới **"Nạp Tiền"** trên thanh Sidebar.
+   - Bạn sẽ thấy đơn nạp của User ở trạng thái **Chờ thanh toán (pending)** với đầy đủ chi tiết.
+   - Nhấp vào nút xanh lá **"Simulate Webhook"** cho đơn nạp đó.
+   - **XEM KẾT QUẢ VI DIỆU:** 
+     - Ngay lập tức tại màn hình User (không cần nhấn F5): Hiệu ứng **pháo hoa giấy (confetti) bay ngập tràn màn hình**, tiếng thông báo nạp thành công hiển thị rực rỡ và số dư ví trên Navbar tự động nhảy số lên **100.000đ** tức thì!
+     - Tại trang Admin: Trạng thái đơn tự động chuyển sang *Thành công* và các chỉ số biểu đồ tổng doanh thu nạp cập nhật ngay lập tức.
+
+---
+
+## ⚙️ Hướng dẫn Cấu hình để Chạy Thật (Production)
+
+Khi bạn đưa website lên mạng và muốn khách hàng quét VietQR chuyển tiền thật đi vào ví thật:
+
+### Cách 1: Sử dụng cổng thanh toán PayOS (Khuyên dùng - Miễn phí 100%)
+1. Truy cập [payos.vn](https://payos.vn/) đăng ký tài khoản hoàn toàn miễn phí.
+2. Kết nối tài khoản ngân hàng cá nhân của bạn (MBBank, VietinBank, Techcombank...).
+3. Lấy các khoá API và điền vào file `.env` ở Backend:
+   ```env
+   PAYOS_CLIENT_ID=mã_client_id_của_bạn
+   PAYOS_API_KEY=mã_api_key_của_bạn
+   PAYOS_CHECKSUM_KEY=mã_checksum_key_của_bạn
+   ```
+4. Cấu hình Webhook trên trang quản trị PayOS trỏ về link: `https://ten-mien-backend-cua-ban.com/api/webhook/payos`.
+5. *Kết quả:* Khách quét QR -> Chuyển tiền thật -> PayOS tự gọi webhook về web -> Tự động cộng tiền realtime 100%!
+
+### Cách 2: Sử dụng SePay hoặc Casso (Quét lịch sử giao dịch trực tiếp tài khoản)
+1. Đăng ký SePay / Casso và liên kết tài khoản ngân hàng của bạn.
+2. Cấu hình Webhook trên SePay trỏ về link: `https://ten-mien-backend-cua-ban.com/api/webhook/sepay`.
+3. Sửa thông tin tài khoản ngân hàng hiển thị VietQR mặc định trong `.env`:
+   ```env
+   BANK_ID=MB              # Tên viết tắt ngân hàng (VCB, ACB, MB...)
+   BANK_ACCOUNT=0978264349 # Số tài khoản nhận tiền
+   BANK_OWNER=NGUYEN TAN DUONG # Họ tên chủ tài khoản
+   ```
+4. *Kết quả:* Khách quét VietQR -> Ngân hàng báo số dư -> SePay bắn Webhook về -> Tự động khớp mã nội dung `WSAC [mã]` và cộng tiền realtime!
+
+---
+
+## 🛠️ Danh sách các file đã được chỉnh sửa & thêm mới
+
+### 📦 Các thư viện bổ sung:
+- **Backend:** `socket.io` (Realtime), `@payos/node` (SDK Cổng thanh toán)
+- **Frontend:** `socket.io-client` (Realtime Client), `canvas-confetti` (Hiệu ứng pháo hoa)
+
+### 💾 File đã Chỉnh sửa / Thêm mới:
+
+```mermaid
+graph TD
+  UserSchema[Modify: User.js - Thêm balance]
+  ServerJS[Modify: server.js - Socket.IO + Routes]
+  AdminRoutes[Modify: adminRoutes.js - Thêm admin deposit APIs]
+  NavbarJSX[Modify: Navbar.jsx - Live Wallet Balance + Glow]
+  
+  DepositModel[New: Deposit.js - Quản lý đơn nạp]
+  TxModel[New: Transaction.js - Biến động số dư]
+  SocketConfig[New: socket.js - WebSocket Engine]
+  
+  DepCtrl[New: depositController.js - Tạo QR dynamic + VietQR fallback]
+  WebCtrl[New: webhookController.js - Webhooks tự động + Realtime trigger]
+  AdDepCtrl[New: adminDepositController.js - Manual confirm + Simulator]
+  
+  SocketCtx[New: SocketContext.jsx - Client sockets + Confetti effect]
+  DepPage[New: Deposit.jsx - Premium VietQR page]
+  AdDepPage[New: admin/Deposits.jsx - Live Dashboard + Simulate webhook]
+
+  classDef modify fill:#f59e0b,stroke:#333,stroke-width:1px;
+  classDef new fill:#10b981,stroke:#333,stroke-width:1px;
+  
+  class UserSchema,ServerJS,AdminRoutes,NavbarJSX modify;
+  class DepositModel,TxModel,SocketConfig,DepCtrl,WebCtrl,AdDepCtrl,SocketCtx,DepPage,AdDepPage new;
+```

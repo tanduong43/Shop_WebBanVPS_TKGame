@@ -5,7 +5,7 @@ import Modal from '../../components/Modal';
 import { toast } from 'react-toastify';
 import {
   FiPlus, FiSearch, FiEdit2, FiTrash2, FiRefreshCw, FiX,
-  FiToggleLeft, FiToggleRight,
+  FiToggleLeft, FiToggleRight, FiEyeOff, FiEye,
 } from 'react-icons/fi';
 
 const emptyForm = {
@@ -55,6 +55,7 @@ export default function AdminProducts() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [type, setType] = useState('');
+  const [showBulkType, setShowBulkType] = useState('all');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -201,6 +202,32 @@ export default function AdminProducts() {
     }
   };
 
+  const onHideAll = async () => {
+    if (!confirm('Bạn có chắc chắn muốn ẨN TẤT CẢ sản phẩm? Người dùng sẽ không thể thấy bất kỳ sản phẩm nào.')) return;
+    try {
+      await productAPI.hideAll();
+      toast.success('Đã ẩn tất cả sản phẩm');
+      fetchData();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Thao tác thất bại');
+    }
+  };
+
+  const onShowBulk = async () => {
+    let typeName = 'Tất cả sản phẩm';
+    if (showBulkType === 'vps') typeName = 'Tất cả VPS';
+    if (showBulkType === 'game_account') typeName = 'Tất cả Account Game';
+
+    if (!confirm(`Bạn có chắc chắn muốn HIỆN ${typeName}?`)) return;
+    try {
+      await productAPI.showBulk(showBulkType);
+      toast.success(`Đã hiện ${typeName}`);
+      fetchData();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Thao tác thất bại');
+    }
+  };
+
   const onPickGameImages = async (event) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
@@ -239,6 +266,23 @@ export default function AdminProducts() {
           <p className="text-white/40 text-sm mt-1">CRUD game account & VPS</p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10">
+            <select 
+              className="bg-transparent text-sm text-white/70 outline-none px-2 cursor-pointer"
+              value={showBulkType}
+              onChange={(e) => setShowBulkType(e.target.value)}
+            >
+              <option value="all" className="bg-dark-800">Tất cả</option>
+              <option value="game_account" className="bg-dark-800">Account Game</option>
+              <option value="vps" className="bg-dark-800">VPS</option>
+            </select>
+            <button onClick={onShowBulk} className="btn-secondary py-1.5 px-3 text-sm inline-flex items-center gap-1 text-green-400 hover:text-green-300 border-none bg-white/5 hover:bg-white/10">
+              <FiEye /> Hiện
+            </button>
+          </div>
+          <button onClick={onHideAll} className="btn-secondary py-2 px-4 text-sm inline-flex items-center gap-2 text-red-400 hover:text-red-300 border-red-500/20 hover:border-red-500/40 hover:bg-red-500/10 transition-colors">
+            <FiEyeOff /> Ẩn tất cả
+          </button>
           <button onClick={fetchData} className="btn-secondary py-2 px-4 text-sm inline-flex items-center gap-2">
             <FiRefreshCw /> Refresh
           </button>

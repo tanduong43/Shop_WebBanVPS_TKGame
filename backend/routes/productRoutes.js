@@ -8,6 +8,8 @@ const {
   updateProduct,
   deleteProduct,
   getAllProductsAdmin,
+  hideAllProducts,
+  showBulkProducts,
 } = require('../controllers/productController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { requireAdmin } = require('../middlewares/roleMiddleware');
@@ -20,6 +22,12 @@ router.get('/', getProducts);
 
 // GET /api/products/admin/all - Lấy tất cả sản phẩm cho admin (phải đứng trước /:id)
 router.get('/admin/all', authMiddleware, requireAdmin, getAllProductsAdmin);
+
+// PUT /api/products/admin/hide-all - Ẩn tất cả sản phẩm (phải đứng trước /:id)
+router.put('/admin/hide-all', authMiddleware, requireAdmin, hideAllProducts);
+
+// PUT /api/products/admin/show-bulk - Hiện sản phẩm theo lô (phải đứng trước /:id)
+router.put('/admin/show-bulk', authMiddleware, requireAdmin, showBulkProducts);
 
 // GET /api/products/:id - Lấy chi tiết 1 sản phẩm
 router.get('/:id', mongoIdParam('id'), getProduct);

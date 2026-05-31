@@ -4,7 +4,8 @@ import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   FiGrid, FiPackage, FiShoppingBag, FiUsers, FiLogOut,
-  FiMenu, FiChevronRight, FiHome,
+  FiMenu, FiChevronRight, FiHome, FiDollarSign,
+  FiCompass, FiAward, FiBookOpen,
 } from 'react-icons/fi';
 import logo from '../../assets/logo.png';
 
@@ -12,6 +13,10 @@ const navItems = [
   { to: '/admin', label: 'Dashboard', icon: FiGrid, exact: true },
   { to: '/admin/products', label: 'Sản Phẩm', icon: FiPackage },
   { to: '/admin/orders', label: 'Đơn Hàng', icon: FiShoppingBag },
+  { to: '/admin/deposits', label: 'Nạp Tiền', icon: FiDollarSign },
+  { to: '/admin/wheels', label: 'Games & Vòng Quay', icon: FiCompass }, // Games hub quản lý
+  { to: '/admin/spins', label: 'Lịch Sử Quay', icon: FiAward },
+  { to: '/admin/questions', label: 'Đố Vui Sinh Tồn', icon: FiBookOpen },
   { to: '/admin/users', label: 'Người Dùng', icon: FiUsers },
 ];
 

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import {
   FiShoppingCart, FiLogOut, FiMenu, FiX,
-  FiShield, FiPackage, FiHome, FiGrid, FiUser,
+  FiShield, FiPackage, FiHome, FiGrid, FiUser, FiZap,
 } from 'react-icons/fi';
 import logo from '../assets/logo.png';
 
@@ -33,6 +33,7 @@ const Navbar = () => {
   const navLinks = [
     { to: '/', label: 'Trang Chủ', icon: FiHome },
     { to: '/products', label: 'Sản Phẩm', icon: FiGrid },
+    { to: '/games', label: 'Trò Chơi', icon: FiZap }, // Trưng tâm game
     { to: '/orders', label: 'Đơn Hàng', icon: FiPackage, authRequired: true },
   ];
 
@@ -80,6 +81,24 @@ const Navbar = () => {
                 </span>
               )}
             </Link>
+
+            {/* Số dư ví Realtime */}
+            {isAuthenticated && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/8 shadow-md select-none transition-all duration-300 hover:border-green-500/20">
+                <div className="w-5 h-5 rounded-md bg-green-500/10 flex items-center justify-center text-green-400 font-extrabold text-[10px] shadow-sm animate-pulse">
+                  $
+                </div>
+                <span className="text-xs font-bold text-green-400 font-mono tracking-wide drop-shadow-[0_0_6px_rgba(74,222,128,0.2)]">
+                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(user?.balance || 0)}
+                </span>
+                <Link
+                  to="/deposit"
+                  className="ml-1 px-2.5 py-0.5 rounded-lg text-[9px] font-extrabold uppercase bg-primary-500/10 border border-primary-500/20 text-primary-400 hover:bg-primary-500 hover:text-white transition-all duration-300 hover:shadow-glow-primary"
+                >
+                  Nạp
+                </Link>
+              </div>
+            )}
 
             {/* Auth */}
             {isAuthenticated ? (

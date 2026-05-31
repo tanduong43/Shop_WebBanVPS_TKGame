@@ -173,4 +173,42 @@ const getAllProductsAdmin = async (req, res, next) => {
   }
 };
 
-module.exports = { getProducts, getProduct, createProduct, updateProduct, deleteProduct, getAllProductsAdmin };
+/**
+ * PUT /api/products/admin/hide-all  [Admin only]
+ * Ẩn tất cả sản phẩm
+ */
+const hideAllProducts = async (req, res, next) => {
+  try {
+    await Product.updateMany({}, { isActive: false });
+    return successResponse(res, null, 'Đã ẩn tất cả sản phẩm thành công');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/products/admin/show-bulk  [Admin only]
+ * Hiện sản phẩm theo loại (all, vps, game_account)
+ */
+const showBulkProducts = async (req, res, next) => {
+  try {
+    const { type } = req.body; // 'all', 'vps', 'game_account'
+
+    const filter = {};
+    if (type && type !== 'all') {
+      filter.type = type;
+    }
+
+    await Product.updateMany(filter, { isActive: true });
+
+    let msg = 'Đã hiện tất cả sản phẩm';
+    if (type === 'vps') msg = 'Đã hiện tất cả VPS';
+    if (type === 'game_account') msg = 'Đã hiện tất cả Account Game';
+
+    return successResponse(res, null, msg);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getProducts, getProduct, createProduct, updateProduct, deleteProduct, getAllProductsAdmin, hideAllProducts, showBulkProducts };

@@ -1,0 +1,123 @@
+Tạo cho tôi một hệ thống "Vòng quay may mắn" hoàn chỉnh cho website với frontend và backend chuyên nghiệp.
+
+Yêu cầu công nghệ:
+
+* Frontend dùng React hoặc Next.js
+* Backend dùng Node.js + Express
+* Database MySQL hoặc PostgreSQL
+* UI hiện đại giống Shopee/Lazada/TikTok Shop
+* Responsive mobile + desktop
+* Animation quay mượt
+* Có hiệu ứng âm thanh khi quay và khi trúng thưởng
+
+Chức năng người dùng:
+
+1. Người dùng có số dư tài khoản (balance)
+2. Người dùng phải nạp tiền vào web để có thể quay
+3. Mỗi lượt quay sẽ bị trừ tiền từ số dư
+4. Giá tiền mỗi lượt quay có thể thay đổi bởi admin
+5. Người dùng được chọn "gói vòng quay" hoặc "danh sách phần thưởng" trước khi quay
+6. Sau khi chọn xong mới được bắt đầu quay
+7. Hiển thị lịch sử quay của người dùng
+8. Hiển thị phần thưởng đã trúng
+9. Có popup thông báo trúng thưởng
+10. Có animation quay nhiều vòng rồi dừng đúng ô phần thưởng
+
+Chức năng admin:
+
+1. CRUD phần thưởng:
+
+* thêm phần thưởng
+* sửa phần thưởng
+* xoá phần thưởng
+
+2. Mỗi phần thưởng có:
+
+* tên phần thưởng
+* hình ảnh
+* mô tả
+* tỉ lệ trúng (%)
+* số lượng còn lại
+* trạng thái bật/tắt
+* màu sắc hiển thị trên vòng quay
+
+3. Admin có thể:
+
+* chỉnh giá mỗi lượt quay
+* chỉnh tỉ lệ phần thưởng
+* tạo nhiều vòng quay khác nhau
+* bật/tắt vòng quay
+* xem lịch sử quay
+* xem người trúng thưởng
+* chỉnh số dư user
+* khoá user
+
+Logic hệ thống:
+
+1. Backend quyết định kết quả quay
+2. Frontend chỉ hiển thị animation
+3. Không random ở frontend để tránh hack
+4. Khi user bấm quay:
+
+* frontend gọi API
+* backend random phần thưởng theo tỉ lệ
+* trả về prize
+* frontend quay tới đúng ô đó
+
+5. Dùng weighted random theo tỉ lệ phần thưởng
+6. Nếu phần thưởng hết số lượng thì không được random nữa
+7. Có chống spam API và rate limit
+8. Có validate tránh sửa request bằng DevTools
+
+Thiết kế database:
+Tạo đầy đủ:
+
+* users
+* spin_wheels
+* prizes
+* spin_history
+* deposits
+* transactions
+* admin_logs
+
+UI/UX:
+
+* Vòng quay đẹp hiện đại
+* Có kim chỉ vị trí trúng thưởng
+* Có glow effect
+* Có loading animation
+* Có âm thanh tick khi quay
+* Dark mode đẹp
+* Responsive
+
+Yêu cầu code:
+
+* Tách component rõ ràng
+* Viết clean architecture
+* Có API structure chuẩn
+* Có middleware auth JWT
+* Có role admin/user
+* Có hướng dẫn cài đặt
+* Có seed dữ liệu mẫu
+* Có comment giải thích code quan trọng
+
+Bonus:
+
+* Thêm websocket realtime thông báo người trúng
+* Top người quay nhiều nhất
+* Top jackpot
+* Hệ thống nhiệm vụ nhận lượt quay miễn phí
+* Voucher / giftcode
+* Referral nhận lượt quay
+* Daily spin
+
+Hãy tạo:
+
+1. Full source code
+2. Cấu trúc thư mục
+3. Database schema
+4. API routes
+5. Frontend pages
+6. Admin dashboard
+7. Logic weighted random hoàn chỉnh
+8. Animation vòng quay chuyên nghiệp

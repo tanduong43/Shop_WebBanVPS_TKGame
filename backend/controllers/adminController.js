@@ -149,6 +149,9 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
+const Transaction = require('../models/Transaction');
+const SystemSetting = require('../models/SystemSetting');
+
 /**
  * PUT /api/admin/users/:id/restore
  * Khôi phục tài khoản user
@@ -167,4 +170,54 @@ const restoreUser = async (req, res, next) => {
   }
 };
 
-module.exports = { getDashboard, getUsers, deleteUser, restoreUser };
+/**
+ * GET /api/admin/settings
+ * Lấy các cấu hình hệ thống
+ */
+const getSettings = async (req, res, next) => {
+  try {
+    const settings = await SystemSetting.find().lean();
+    // Chuyển array thành object key-value cho frontend dễ xài
+    const settingsObj = settings.reduce((acc, curr) => {
+      acc[curr.key] = curr.value;
+      return acc;
+    }, {});
+    
+    // Mặc định nạp tiền là bật nếu chưa có db
+    if (settingsObj.deposit_enabled === undefined) {
+      settingsObj.deposit_enabled = true;
+    }
+    
+    return successResponse(res, settingsObj, 'Lấy cấu hình thành công');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/admin/settings
+ * Cập nhật cấu hình hệ thống
+ */
+const updateSetting = async (req, res, next) => {
+  try {
+    const { key, value } = req.body;
+    
+    if (!key) {
+      return errorResponse(res, 'Thiếu key cấu hình', 400);
+    }
+
+    let setting = await SystemSetting.findOne({ key });
+    if (!setting) {
+      setting = new SystemSetting({ key, value });
+    } else {
+      setting.value = value;
+    }
+    await setting.save();
+
+    return successResponse(res, setting, 'Cập nhật cấu hình thành công');
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getDashboard, getUsers, deleteUser, restoreUser, getSettings, updateSetting };

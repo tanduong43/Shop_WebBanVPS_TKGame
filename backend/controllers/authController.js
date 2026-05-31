@@ -1,14 +1,14 @@
 // controllers/authController.js - Xử lý xác thực người dùng
-const User            = require('../models/User');
-const CaptchaToken    = require('../models/CaptchaToken');
+const User = require('../models/User');
+const CaptchaToken = require('../models/CaptchaToken');
 const RegistrationLog = require('../models/RegistrationLog');
-const { generateToken }                    = require('../utils/generateToken');
-const { successResponse, errorResponse }   = require('../utils/apiResponse');
+const { generateToken } = require('../utils/generateToken');
+const { successResponse, errorResponse } = require('../utils/apiResponse');
 const nodemailer = require('nodemailer');
 
 // ─── Hằng số giới hạn đăng ký ────────────────────────────────────────────────
-const MAX_ACCOUNTS_PER_DAY = 3;
-const MIN_GAP_MS           = 60 * 60 * 1000; // 1 tiếng
+const MAX_ACCOUNTS_PER_DAY = 10;
+const MIN_GAP_MS = 1 * 60 * 1000; // 1 phút
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -27,31 +27,7 @@ const getTodayVN = () => {
   return vn.toISOString().slice(0, 10);
 };
 
-// ─── Email ────────────────────────────────────────────────────────────────────
-const normalizeEnv = (value) => {
-  let s = String(value ?? '').trim();
-  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
-    s = s.slice(1, -1).trim();
-  }
-  return s;
-};
-
-const createMailTransporter = () => {
-  const emailUser = normalizeEnv(process.env.EMAIL_USER).toLowerCase();
-  let emailPass   = normalizeEnv(process.env.EMAIL_PASS);
-  emailPass = emailPass.replace(/\s+/g, '');
-
-  if (!emailUser || !emailPass) {
-    throw Object.assign(new Error('EMAIL_USER hoặc EMAIL_PASS chưa cấu hình'), { code: 'EMISSING' });
-  }
-
-  return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: { user: emailUser, pass: emailPass },
-  });
-};
+const { createMailTransporter, normalizeEnv } = require('../utils/sendEmail');
 
 // ─── CAPTCHA ──────────────────────────────────────────────────────────────────
 
@@ -62,7 +38,7 @@ const createMailTransporter = () => {
 const getCaptcha = async (req, res, next) => {
   try {
     const ops = ['+', '-', '×'];
-    const op  = ops[Math.floor(Math.random() * ops.length)];
+    const op = ops[Math.floor(Math.random() * ops.length)];
 
     let a, b, answer;
     if (op === '+') {
@@ -122,9 +98,9 @@ const register = async (req, res, next) => {
     await captcha.save();
 
     // ── 2. Kiểm tra giới hạn đăng ký theo IP (MongoDB) ──────────────────────
-    const ip    = getClientIp(req);
+    const ip = getClientIp(req);
     const today = getTodayVN();
-    const now   = Date.now();
+    const now = Date.now();
 
     let log = await RegistrationLog.findOne({ ip, date: today });
 
@@ -140,7 +116,7 @@ const register = async (req, res, next) => {
 
       // Kiểm tra khoảng cách
       const lastTime = log.timestamps[log.timestamps.length - 1];
-      const elapsed  = now - lastTime;
+      const elapsed = now - lastTime;
       if (elapsed < MIN_GAP_MS) {
         const waitMin = Math.ceil((MIN_GAP_MS - elapsed) / 60000);
         return errorResponse(
@@ -159,7 +135,7 @@ const register = async (req, res, next) => {
     }
 
     // ── 4. Tạo user mới ──────────────────────────────────────────────────────
-    const user  = await User.create({ username, email, password });
+    const user = await User.create({ username, email, password });
     const token = generateToken({ id: user._id, role: user.role });
 
     // ── 5. Ghi log IP vào MongoDB ────────────────────────────────────────────

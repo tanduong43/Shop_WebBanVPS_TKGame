@@ -1,24 +1,42 @@
 // server.js - Entry point của backend
 require('dotenv').config();
 const express = require('express');
+const http = require('http'); // Thêm http module
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
 const errorHandler = require('./middlewares/errorHandler');
+const { initSocket } = require('./config/socket'); // Thêm initSocket
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const depositRoutes = require('./routes/depositRoutes'); // Thêm routes nạp tiền
+const webhookRoutes = require('./routes/webhookRoutes'); // Thêm routes webhook
+const wheelRoutes = require('./routes/wheelRoutes'); // Thêm routes vòng quay user
+const adminWheelRoutes = require('./routes/adminWheelRoutes'); // Thêm routes vòng quay admin
+const bauCuaRoutes = require('./routes/bauCuaRoutes'); // Bầu Cua user routes
+const adminBauCuaRoutes = require('./routes/adminBauCuaRoutes'); // Bầu Cua admin routes
+const questionRoutes = require('./routes/questionRoutes'); // Trivia questions & topics
+const { initGameEngine } = require('./controllers/bauCuaGameEngine'); // Bầu Cua engine
+const { initTriviaEngine } = require('./controllers/triviaGameEngine'); // Trivia engine
 
 const app = express();
+const server = http.createServer(app); // Tạo HTTP Server
 const PORT = process.env.PORT || 5000;
 
-// ─── Kết nối Database ─────────────────────────────────────────────────────
-connectDB();
+// ─── Khởi tạo Socket.IO ────────────────────────────────────────────
+const io = initSocket(server);
+
+// Khởi động Game Engine Bầu Cua sau khi DB kết nối xong
+connectDB().then(() => {
+  initGameEngine(io);
+  initTriviaEngine(io);
+});
 
 // ─── Security Middlewares ─────────────────────────────────────────────────
 
@@ -38,7 +56,7 @@ app.use(cors({
 // Rate Limiting: chống brute-force và spam
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 phút
-  max: 200,                  // Tối đa 200 requests mỗi IP
+  max: 300,                  // Tối đa 300 requests mỗi IP
   message: { success: false, message: 'Quá nhiều yêu cầu, vui lòng thử lại sau.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -46,7 +64,7 @@ const generalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 phút
-  max: 20,                   // Tối đa 10 lần thử đăng nhập
+  max: 20,                   // Tối đa 20 lần thử đăng nhập
   message: { success: false, message: 'Quá nhiều lần thử đăng nhập, vui lòng thử lại sau 15 phút.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -75,6 +93,9 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Webhook routes (nên đặt trước general rate limit gắt gao hoặc để không cần auth)
+app.use('/api/webhook', webhookRoutes);
+
 // Auth routes (với rate limiter riêng)
 app.use('/api/auth', authLimiter, authRoutes);
 
@@ -83,6 +104,24 @@ app.use('/api/products', productRoutes);
 
 // Order routes
 app.use('/api/orders', orderRoutes);
+
+// Deposit routes
+app.use('/api/deposits', depositRoutes);
+
+// Spin wheel routes
+app.use('/api/spin-wheels', wheelRoutes);
+
+// Admin spin wheel routes
+app.use('/api/admin-wheels', adminWheelRoutes);
+
+// Bầu Cua user routes
+app.use('/api/baucua', bauCuaRoutes);
+
+// Bầu Cua admin routes
+app.use('/api/admin/baucua', adminBauCuaRoutes);
+
+// Trivia questions & topics
+app.use('/api/questions', questionRoutes);
 
 // Admin routes
 app.use('/api/admin', adminRoutes);
@@ -96,10 +135,10 @@ app.use('*', (req, res) => {
 app.use(errorHandler);
 
 // ─── Start Server ─────────────────────────────────────────────────────────
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`\n🚀 Server đang chạy tại http://localhost:${PORT}`);
   console.log(`📚 API Docs: http://localhost:${PORT}/api/health`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}\n`);
 });
 
-module.exports = app;
+module.exports = server;

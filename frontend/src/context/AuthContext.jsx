@@ -73,6 +73,16 @@ export const AuthProvider = ({ children }) => {
     toast.info('Đã đăng xuất');
   }, []);
 
+  // Cập nhật số dư người dùng
+  const updateBalance = useCallback((newBalance) => {
+    setUser((prevUser) => {
+      if (!prevUser) return prevUser;
+      const updatedUser = { ...prevUser, balance: newBalance };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return updatedUser;
+    });
+  }, []);
+
   const isAdmin = user?.role === 'admin';
   const isAuthenticated = !!token && !!user;
 
@@ -81,6 +91,7 @@ export const AuthProvider = ({ children }) => {
       user, token, loading,
       isAuthenticated, isAdmin,
       login, register, logout,
+      updateBalance,
     }}>
       {children}
     </AuthContext.Provider>

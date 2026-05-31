@@ -1,0 +1,16 @@
+[
+  {
+    "topicId": "REPLACE_WITH_TOPIC_ID",
+    "question": "What is the English word for \"cái tủ lạnh\"?",
+    "options": ["Microwave", "Refrigerator", "Oven", "Toaster"],
+    "correctIndex": 1,
+    "difficulty": "A2"
+  },
+  {
+    "topicId": "REPLACE_WITH_TOPIC_ID",
+    "question": "Bò sữa Holstein thường có màu lông gì?",
+    "options": ["Nâu đỏ", "Đen trắng loang lổ", "Trắng toàn thân", "Xám xám"],
+    "correctIndex": 1,
+    "difficulty": "medium"
+  }
+]
