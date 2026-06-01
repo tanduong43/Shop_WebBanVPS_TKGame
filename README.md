@@ -64,6 +64,7 @@ Chỉnh `.env` (ít nhất `MONGODB_URI`, `JWT_SECRET`, `ZALO_PHONE`), sau đó:
 ```bash
 npm run seed
 npm run seed:trivia
+npm run seed:wheels
 npm run dev
 ```
 

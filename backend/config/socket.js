@@ -7,9 +7,14 @@ let io = null;
 const userSockets = new Map(); // Lưu trữ map userId -> Set(socket.id)
 
 const initSocket = (server) => {
+  // Parse danh sách origins (hỗ trợ nhiều origin phân cách bởi dấu phẩy)
+  const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+    .split(',')
+    .map(url => url.trim());
+
   io = socketIO(server, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:5173',
+      origin: allowedOrigins,
       credentials: true,
       methods: ['GET', 'POST'],
     },

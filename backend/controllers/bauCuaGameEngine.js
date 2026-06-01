@@ -2,7 +2,7 @@
 // ============================================================
 // Game Loop Engine cho Bầu Cua Tôm Cá Real-time
 // ============================================================
-const mongoose = require('mongoose');
+// Không cần import mongoose (đã loại bỏ Transaction/Session)
 const BauCuaRoom = require('../models/BauCuaRoom');
 const BauCuaRound = require('../models/BauCuaRound');
 const User = require('../models/User');
@@ -157,11 +157,9 @@ async function hybridAlgorithm(round, roomId) {
   return { result: picked.result, mode: BAUCUA_MODE.SWEEP_216 };
 }
 
-// ─── XỬ LÝ PAYOUT (TRANSACTION) ──────────────────────────────────────────────
+// ─── XỬ LÝ PAYOUT (KHÔNG CẦN TRANSACTION – TƯƠNG THÍCH STANDALONE MONGODB) ──
 
 async function processPayout(round) {
-  const session = await mongoose.startSession();
-  session.startTransaction();
   try {
     const updatedBets = [];
 
@@ -174,10 +172,10 @@ async function processPayout(round) {
 
       // Chỉ cộng/trừ tiền user thật (không phải bot)
       if (!bet.isBot && bet.userId) {
+        // Atomic update – an toàn trên standalone MongoDB
         await User.findByIdAndUpdate(
           bet.userId,
-          { $inc: { balance: profit } }, // profit < 0 → tự trừ
-          { session }
+          { $inc: { balance: profit } } // profit < 0 → tự trừ
         );
 
         // Ghi nhật ký biến động số dư
@@ -185,11 +183,11 @@ async function processPayout(round) {
           userId: bet.userId,
           type: profit > 0 ? TRANSACTION_TYPES.BAUCUA_WIN : TRANSACTION_TYPES.BAUCUA_BET,
           amount: profit,
-          balanceBefore: 0, // Snapshot - update below
+          balanceBefore: 0,
           balanceAfter: 0,
           description: `Bầu Cua: Cược ${bet.symbol.toUpperCase()} ${bet.amount.toLocaleString()}đ - ${profit > 0 ? '+' : ''}${profit.toLocaleString()}đ`,
         });
-        await tx.save({ session });
+        await tx.save();
       }
     }
 
@@ -206,24 +204,19 @@ async function processPayout(round) {
         totalRealBets: totalRealBet,
         totalPayout,
         houseProfit,
-      },
-      { session }
+      }
     );
 
     await BauCuaRoom.findByIdAndUpdate(
       round.roomId,
-      { $inc: { totalRounds: 1, totalVolume: totalRealBet } },
-      { session }
+      { $inc: { totalRounds: 1, totalVolume: totalRealBet } }
     );
 
-    await session.commitTransaction();
+    console.log(`✅ Payout thành công: ${updatedBets.length} lệnh cược, House profit: ${houseProfit.toLocaleString()}đ`);
     return updatedBets;
   } catch (err) {
-    await session.abortTransaction();
-    console.error('❌ Payout transaction failed:', err.message);
+    console.error('❌ Payout failed:', err.message);
     throw err;
-  } finally {
-    session.endSession();
   }
 }
 

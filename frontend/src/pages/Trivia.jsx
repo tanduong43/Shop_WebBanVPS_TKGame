@@ -10,7 +10,10 @@ import {
   FiArrowLeft, FiClock,
 } from 'react-icons/fi';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+// Socket URL: ưu tiên VITE_SOCKET_URL, fallback lấy từ VITE_API_URL (bỏ /api), cuối cùng dùng localhost
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL
+  || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') : null)
+  || 'http://localhost:5000';
 
 const PHASE = { MENU: 'menu', LOBBY: 'lobby', PLAYING: 'playing', FINISHED: 'finished' };
 

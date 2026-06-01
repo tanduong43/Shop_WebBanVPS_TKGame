@@ -12,7 +12,10 @@ import shakeSoundPath from '../assets/audio/shake.mp3';
 import winSoundPath from '../assets/audio/win.mp3';
 import betSoundPath from '../assets/audio/bet.mp3';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+// Socket URL: ưu tiên VITE_SOCKET_URL, fallback lấy từ VITE_API_URL (bỏ /api), cuối cùng dùng localhost
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL
+  || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') : null)
+  || 'http://localhost:5000';
 
 // ─── DỮEỮ LIỆU BIỂU TƯỢNG ─────────────────────────────────────────────────
 const SYMBOLS = [
@@ -46,28 +49,15 @@ function DiceDisplay({ symbol, rolling, revealed }) {
 
 // ─── COMPONENT CÁI TÔ ────────────────────────────────────────────────────────
 function BowlOverlay({ status }) {
-  // Trạng thái: 'waiting', 'locked', 'rolling', 'finished'
-  const [animClass, setAnimClass] = useState('');
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    if (status === 'finished') {
-      // Mở tô
-      setAnimClass('animate-bowl-uncover');
-      const t = setTimeout(() => setIsVisible(false), 600); // Ẩn hẳn sau khi bay lên
-      return () => clearTimeout(t);
-    } else {
-      // Úp tô (nếu đang hidden thì hiển thị)
-      setIsVisible(true);
-      setAnimClass('animate-bowl-cover');
-    }
-  }, [status]);
-
-  if (!isVisible) return null;
+  // status: 'waiting' | 'locked' | 'rolling' | 'finished'
+  const isOpen = status === 'finished';
+  const isShaking = status === 'rolling';
 
   return (
-    <div className={`absolute inset-0 flex items-center justify-center z-10 pointer-events-none ${animClass}`}>
-      <div className="w-56 h-56 sm:w-64 sm:h-64 relative drop-shadow-2xl">
+    <div className={`absolute inset-0 flex items-center justify-center z-10 pointer-events-none transition-all duration-600
+      ${isOpen ? 'animate-bowl-uncover' : 'animate-bowl-cover'}
+    `}>
+      <div className={`w-56 h-56 sm:w-64 sm:h-64 relative drop-shadow-2xl ${isShaking ? 'animate-shake-dice' : ''}`}>
         {/* Hình dáng cái tô úp ngược */}
         <div className="absolute inset-0 bg-gradient-to-b from-amber-700 to-amber-900 rounded-full border-b-[12px] border-amber-950 shadow-[inset_0_-20px_40px_rgba(0,0,0,0.5)] flex items-center justify-center overflow-hidden">
           {/* Họa tiết rồng/mây mờ */}
@@ -75,12 +65,6 @@ function BowlOverlay({ status }) {
         </div>
         {/* Đáy tô (ở trên cùng vì úp) */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-24 bg-amber-950 rounded-full border-b-8 border-amber-900 scale-y-50 -translate-y-8" />
-        {/* Hiệu ứng rung khi đang lắc */}
-        {status === 'rolling' && (
-          <div className="absolute inset-0 animate-shake-dice flex items-center justify-center">
-            {/* Tạo âm thanh lách cách ảo bằng animation */}
-          </div>
-        )}
       </div>
     </div>
   );
