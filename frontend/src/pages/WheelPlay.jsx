@@ -1,5 +1,5 @@
 // src/pages/WheelPlay.jsx - Giao diện trang chơi Vòng quay may mắn dành cho User
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { wheelAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import spinSoundPath from '../assets/audio/spin.mp3';
@@ -7,10 +7,8 @@ import winSoundPath from '../assets/audio/win.mp3';
 import { toast } from 'react-toastify';
 import confetti from 'canvas-confetti';
 import {
-  FiAward, FiDollarSign, FiZap, FiRefreshCw, FiGrid,
-  FiShoppingBag, FiInfo, FiVolume2, FiVolumeX, FiCheckCircle
+  FiAward, FiZap, FiRefreshCw, FiInfo, FiVolume2, FiVolumeX
 } from 'react-icons/fi';
-import Pagination from '../components/Pagination';
 
 export default function WheelPlay() {
   const { user, updateBalance } = useAuth();
@@ -118,14 +116,11 @@ export default function WheelPlay() {
   useEffect(() => {
     fetchWheels();
     fetchHistory(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ chạy khi mount
   }, []);
 
   // 4. Vẽ vòng quay lên Canvas khi thay đổi phần thưởng
-  useEffect(() => {
-    drawWheel();
-  }, [prizes]);
-
-  const drawWheel = () => {
+  const drawWheel = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || prizes.length === 0) return;
 
@@ -244,7 +239,11 @@ export default function WheelPlay() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('WIN', centerX, centerY);
-  };
+  }, [prizes]);
+
+  useEffect(() => {
+    drawWheel();
+  }, [drawWheel]);
 
   // 5. THỰC HIỆN LOGIC QUAY THƯỞNG
   const handleSpin = async () => {
@@ -416,14 +415,6 @@ export default function WheelPlay() {
                 </button>
               ))
             )}
-
-            {/* Lưu ý bảo mật */}
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-[11px] text-white/40 flex gap-2">
-              <FiInfo className="text-sm text-primary-400 flex-shrink-0 mt-0.5" />
-              <p>
-                <strong>Bảo mật tuyệt đối:</strong> Logic vòng quay được kiểm chứng trực tiếp trên server backend của chúng tôi. Việc thay đổi DevTools hoặc code CSS ở trình duyệt hoàn toàn không làm thay đổi kết quả thật.
-              </p>
-            </div>
           </div>
 
           {/* CỘT GIỮA: KHU VỰC VÒNG QUAY MAY MẮN */}

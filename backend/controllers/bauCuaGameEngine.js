@@ -2,7 +2,7 @@
 // ============================================================
 // Game Loop Engine cho Bầu Cua Tôm Cá Real-time
 // ============================================================
-// Không cần import mongoose (đã loại bỏ Transaction/Session)
+const mongoose = require('mongoose');
 const BauCuaRoom = require('../models/BauCuaRoom');
 const BauCuaRound = require('../models/BauCuaRound');
 const User = require('../models/User');
@@ -14,6 +14,57 @@ const {
   BAUCUA_LIMITS,
   TRANSACTION_TYPES,
 } = require('../config/constants');
+const { emitToUser } = require('../config/socket');
+
+function resolveBetUserId(bet) {
+  if (!bet?.userId) return null;
+  const id = bet.userId._id ?? bet.userId;
+  const str = id?.toString?.() || String(id);
+  if (!mongoose.Types.ObjectId.isValid(str)) return null;
+  return str;
+}
+
+/** Hoàn cược và đóng các ván WAITING cũ bị kẹt (sau crash/restart server) */
+async function closeOrphanWaitingRounds(roomId) {
+  const current = await BauCuaRound.findOne({
+    roomId,
+    status: { $ne: BAUCUA_STATUS.FINISHED },
+  }).sort({ roundNumber: -1 });
+
+  if (!current) return;
+
+  const orphans = await BauCuaRound.find({
+    roomId,
+    status: BAUCUA_STATUS.WAITING,
+    roundNumber: { $lt: current.roundNumber },
+  });
+
+  for (const orphan of orphans) {
+    for (const bet of orphan.bets || []) {
+      if (bet.isBot || !bet.userId) continue;
+      const uid = resolveBetUserId(bet);
+      if (!uid) continue;
+      const amount = Number(bet.amount) || 0;
+      if (amount <= 0) continue;
+
+      const updatedUser = await User.findByIdAndUpdate(
+        uid,
+        { $inc: { balance: amount } },
+        { new: true }
+      );
+      if (updatedUser) {
+        emitToUser(uid, 'balance:updated', { balance: updatedUser.balance });
+      }
+    }
+
+    await BauCuaRound.findByIdAndUpdate(orphan._id, {
+      status: BAUCUA_STATUS.FINISHED,
+      finishedAt: new Date(),
+      houseProfit: 0,
+    });
+    console.log(`🧹 Đóng ván kẹt #${orphan.roundNumber} (room ${roomId}), hoàn cược cho user`);
+  }
+}
 
 let io = null;
 const activeRooms = new Map(); // roomId -> { timer, currentRoundId }
@@ -159,41 +210,71 @@ async function hybridAlgorithm(round, roomId) {
 
 // ─── XỬ LÝ PAYOUT (KHÔNG CẦN TRANSACTION – TƯƠNG THÍCH STANDALONE MONGODB) ──
 
-async function processPayout(round) {
+async function processPayout(round, diceResult) {
   try {
-    const updatedBets = [];
+    const result =
+      Array.isArray(diceResult) && diceResult.length === 3
+        ? diceResult
+        : round.result;
 
-    for (const bet of round.bets) {
-      const appearances = round.result.filter(s => s === bet.symbol).length;
-      const profit = appearances > 0 ? bet.amount * appearances : -bet.amount;
-      const payout = appearances > 0 ? bet.amount + bet.amount * appearances : 0;
+    if (!Array.isArray(result) || result.length !== 3) {
+      throw new Error(`Thiếu kết quả xúc xắc cho ván ${round._id}`);
+    }
+
+    const updatedBets = [];
+    const creditsByUser = new Map(); // userId -> { totalPayout, entries[] }
+
+    for (const bet of round.bets || []) {
+      const amount = Number(bet.amount) || 0;
+      const profit = calcProfit({ ...bet, amount }, result);
+      const payout = profit > 0 ? amount + profit : 0;
 
       updatedBets.push({ ...bet, payout, profit });
 
-      // Chỉ cộng/trừ tiền user thật (không phải bot)
-      if (!bet.isBot && bet.userId) {
-        // Atomic update – an toàn trên standalone MongoDB
-        await User.findByIdAndUpdate(
-          bet.userId,
-          { $inc: { balance: profit } } // profit < 0 → tự trừ
-        );
-
-        // Ghi nhật ký biến động số dư
-        const tx = new Transaction({
-          userId: bet.userId,
-          type: profit > 0 ? TRANSACTION_TYPES.BAUCUA_WIN : TRANSACTION_TYPES.BAUCUA_BET,
-          amount: profit,
-          balanceBefore: 0,
-          balanceAfter: 0,
-          description: `Bầu Cua: Cược ${bet.symbol.toUpperCase()} ${bet.amount.toLocaleString()}đ - ${profit > 0 ? '+' : ''}${profit.toLocaleString()}đ`,
-        });
-        await tx.save();
+      const uid = resolveBetUserId(bet);
+      if (!bet.isBot && uid && payout > 0) {
+        const prev = creditsByUser.get(uid) || { totalPayout: 0, entries: [] };
+        prev.totalPayout += payout;
+        prev.entries.push({ bet, profit, payout, amount });
+        creditsByUser.set(uid, prev);
       }
     }
 
-    const totalPayout = updatedBets.filter(b => !b.isBot).reduce((s, b) => s + b.payout, 0);
-    const totalRealBet = updatedBets.filter(b => !b.isBot).reduce((s, b) => s + b.amount, 0);
-    const houseProfit = totalRealBet - (totalPayout - totalRealBet);
+    // Tiền cược đã trừ lúc đặt — cộng gốc + lãi (payout) khi thắng
+    const balanceByUser = {};
+    for (const [uid, { totalPayout, entries }] of creditsByUser) {
+      const updatedUser = await User.findByIdAndUpdate(
+        uid,
+        { $inc: { balance: totalPayout } },
+        { new: true }
+      );
+      if (!updatedUser) {
+        console.error(`⚠️ BauCua payout: không tìm thấy user ${uid} (+${totalPayout})`);
+        continue;
+      }
+
+      balanceByUser[uid] = updatedUser.balance;
+
+      for (const { bet, profit, payout, amount } of entries) {
+        try {
+          const tx = new Transaction({
+            userId: uid,
+            type: TRANSACTION_TYPES.BAUCUA_WIN,
+            amount: payout,
+            balanceBefore: 0,
+            balanceAfter: 0,
+            description: `Bầu Cua thắng: ${bet.symbol.toUpperCase()} ${amount.toLocaleString()}đ - nhận ${payout.toLocaleString()}đ (lãi +${profit.toLocaleString()}đ)`,
+          });
+          await tx.save();
+        } catch (txErr) {
+          console.error(`⚠️ BauCua tx log failed (user ${uid}):`, txErr.message);
+        }
+      }
+    }
+
+    const totalPayout = updatedBets.filter(b => !b.isBot).reduce((s, b) => s + (b.payout || 0), 0);
+    const totalRealBet = updatedBets.filter(b => !b.isBot).reduce((s, b) => s + (b.amount || 0), 0);
+    const houseProfit = totalRealBet - totalPayout;
 
     await BauCuaRound.findByIdAndUpdate(
       round._id,
@@ -213,7 +294,7 @@ async function processPayout(round) {
     );
 
     console.log(`✅ Payout thành công: ${updatedBets.length} lệnh cược, House profit: ${houseProfit.toLocaleString()}đ`);
-    return updatedBets;
+    return { updatedBets, balanceByUser };
   } catch (err) {
     console.error('❌ Payout failed:', err.message);
     throw err;
@@ -301,30 +382,20 @@ async function runRound(roomId) {
 
     // 8. XỬ LÝ PAYOUT
     const updatedRound = await BauCuaRound.findById(round._id).lean();
-    const paidBets = await processPayout(updatedRound);
+    const { updatedBets: paidBets, balanceByUser } = await processPayout(updatedRound, finalResult);
 
-    // 9. PHÁT KẾT QUẢ
-    // Lấy balance mới nhất của từng user thật
-    const realUserUpdates = {};
-    for (const bet of paidBets) {
-      if (!bet.isBot && bet.userId) {
-        const u = await User.findById(bet.userId).select('balance').lean();
-        if (u) realUserUpdates[bet.userId.toString()] = u.balance;
-      }
-    }
-
+    // 9. PHÁT KẾT QUẢ trước — client cần nhận xúc xắc trước khi balance:updated (tránh reconnect/mất event khi thắng)
     io && io.to(`baucua:${roomId}`).emit('baucua:result', {
       roundId: round._id,
       roundNumber,
       result: finalResult,
       gameMode,
       bets: paidBets,
-      userBalances: realUserUpdates,
+      userBalances: balanceByUser,
     });
 
-    // Gửi cập nhật balance cá nhân cho từng user
-    for (const [uid, balance] of Object.entries(realUserUpdates)) {
-      io && io.to(`user:${uid}`).emit('balance:updated', { balance });
+    for (const [uid, balance] of Object.entries(balanceByUser)) {
+      emitToUser(uid, 'balance:updated', { balance });
     }
 
     // 10. ĐỢI HIỂN THỊ KẾT QUẢ
@@ -442,18 +513,19 @@ async function initGameEngine(ioInstance) {
   // Khởi động lại vòng lặp cho tất cả phòng đang active
   const activeRoomDocs = await BauCuaRoom.find({ isActive: true }).lean();
   for (const room of activeRoomDocs) {
-    startRoom(room._id.toString());
+    await startRoom(room._id.toString());
   }
   console.log(`🎮 BauCua Game Engine khởi động: ${activeRoomDocs.length} phòng đang hoạt động`);
 }
 
 /** Bắt đầu vòng lặp cho 1 phòng */
-function startRoom(roomId) {
+async function startRoom(roomId) {
   const rid = roomId.toString();
   if (activeRooms.has(rid)) {
     console.log(`⚠️ Room ${rid} đang chạy rồi`);
     return;
   }
+  await closeOrphanWaitingRounds(rid);
   activeRooms.set(rid, { currentRoundId: null });
   runRound(rid);
   console.log(`▶️ Room ${rid} started`);

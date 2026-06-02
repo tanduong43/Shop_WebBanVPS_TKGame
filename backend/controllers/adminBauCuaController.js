@@ -84,7 +84,7 @@ const toggleRoom = async (req, res, next) => {
     await room.save();
 
     if (room.isActive) {
-      startRoom(id);
+      await startRoom(id);
     } else {
       stopRoom(id);
     }

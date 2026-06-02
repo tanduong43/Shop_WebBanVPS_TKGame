@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import confetti from 'canvas-confetti';
 import { bauCuaAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { FiArrowLeft, FiClock, FiUsers, FiZap, FiLock, FiAlertTriangle, FiVolume2, FiVolumeX } from 'react-icons/fi';
+import { FiArrowLeft, FiClock, FiZap, FiLock, FiAlertTriangle, FiVolume2, FiVolumeX } from 'react-icons/fi';
 
 import shakeSoundPath from '../assets/audio/shake.mp3';
 import winSoundPath from '../assets/audio/win.mp3';
@@ -28,43 +28,129 @@ const SYMBOLS = [
 ];
 const SYMBOL_MAP = Object.fromEntries(SYMBOLS.map(s => [s.key, s]));
 
-// ─── COMPONENT XÚC XẮC ───────────────────────────────────────────────────────
+const sameUserId = (a, b) => {
+  if (a == null || b == null) return false;
+  return String(a) === String(b);
+};
+
+// ─── COMPONENT XÚC XẮC (con trên dĩa) ───────────────────────────────────────
 function DiceDisplay({ symbol, rolling, revealed }) {
   const s = symbol ? SYMBOL_MAP[symbol] : null;
   return (
-    <div className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-2 flex items-center justify-center transition-all duration-500
-      ${rolling ? `animate-shake-dice border-white/30 bg-white/5` : ''}
-      ${revealed && s ? `${s.border} bg-gradient-to-br ${s.color}/10 ${s.glow}` : 'border-white/10 bg-white/5'}
-    `}>
+    <div
+      className={`relative w-[4.25rem] h-[4.25rem] sm:w-[4.75rem] sm:h-[4.75rem] rounded-xl flex items-center justify-center transition-all duration-500
+        shadow-[0_4px_0_rgba(0,0,0,0.35),0_8px_16px_rgba(0,0,0,0.25),inset_0_2px_4px_rgba(255,255,255,0.25)]
+        ${rolling ? 'animate-shake-dice border-amber-200/40 bg-gradient-to-br from-amber-50 to-amber-100' : ''}
+        ${!rolling && revealed && s
+          ? `border-2 ${s.border} bg-gradient-to-br from-amber-50 via-white to-amber-100/90 ${s.glow} scale-105`
+          : !rolling ? 'border-2 border-amber-200/50 bg-gradient-to-br from-amber-50/90 via-white to-amber-100/80' : ''}
+      `}
+    >
+      <div className="absolute inset-x-1 top-0.5 h-1/3 rounded-t-lg bg-white/40 pointer-events-none" />
       {rolling ? (
-        <span className="text-4xl animate-spin-slow select-none">🎲</span>
+        <span className="text-3xl sm:text-4xl animate-spin-slow select-none drop-shadow-sm">🎲</span>
       ) : revealed && s ? (
-        <span className="text-4xl sm:text-5xl select-none animate-bounce-in">{s.emoji}</span>
+        <span className="text-3xl sm:text-[2.35rem] select-none animate-bounce-in drop-shadow-md">{s.emoji}</span>
       ) : (
-        <span className="text-3xl opacity-30 select-none">🎲</span>
+        <span className="text-2xl sm:text-3xl opacity-25 select-none">?</span>
       )}
+    </div>
+  );
+}
+
+// ─── DĨA (lớp dưới) ─────────────────────────────────────────────────────────
+function ServingPlate() {
+  return (
+    <div className="relative w-[19rem] h-[7rem] sm:w-[22rem] sm:h-[8rem] mx-auto" aria-hidden>
+      {/* Bóng đổ */}
+      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-[92%] h-5 rounded-[100%] bg-black/45 blur-xl" />
+
+      {/* Vành dĩa — nhìn nghiêng (ellipse) */}
+      <div
+        className="absolute inset-0 rounded-[50%] bg-gradient-to-b from-amber-600 via-amber-800 to-amber-950
+          border-[3px] border-amber-500/50 shadow-[0_10px_28px_rgba(0,0,0,0.5),inset_0_3px_10px_rgba(255,220,160,0.2)]"
+      />
+
+      {/* Mặt dĩa đỏ */}
+      <div
+        className="absolute left-[6%] right-[6%] top-[14%] bottom-[18%] rounded-[50%]
+          bg-gradient-to-b from-red-700 via-red-900 to-red-950
+          border border-red-600/30
+          shadow-[inset_0_8px_20px_rgba(0,0,0,0.45),inset_0_-2px_8px_rgba(255,100,100,0.1)]"
+      >
+        <div className="absolute inset-0 rounded-[50%] bg-[radial-gradient(ellipse_at_40%_28%,rgba(255,210,140,0.28),transparent_58%)]" />
+        <div className="absolute inset-[12%] rounded-[50%] border border-amber-400/15 border-dashed" />
+      </div>
+
+      {/* Cạnh dĩa phía trước (độ sâu) */}
+      <div className="absolute left-[4%] right-[4%] bottom-[6%] h-3 rounded-[50%] bg-gradient-to-b from-amber-900/80 to-amber-950 blur-[1px]" />
+    </div>
+  );
+}
+
+// ─── 3 CON + DĨA PHÍA DƯỚI ───────────────────────────────────────────────────
+function DicePlateArea({ diceResult, rolling, status, children }) {
+  const covered = !status || status !== 'finished';
+
+  return (
+    <div className="relative flex flex-col items-center justify-center py-5 sm:py-7 min-h-[240px] sm:min-h-[280px]">
+      <div className="relative flex flex-col items-center">
+        {/* 3 con — chỉ hiện khi mở nắp */}
+        {!covered && (
+          <div className="relative z-20 flex items-center justify-center gap-2 sm:gap-3 px-1 mb-[-2.25rem] sm:mb-[-2.75rem] animate-bounce-in">
+            {[0, 1, 2].map(i => (
+              <DiceDisplay
+                key={i}
+                symbol={diceResult[i]}
+                rolling={rolling}
+                revealed={!rolling && diceResult[i] !== null}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Dĩa — luôn hiện */}
+        <div className={`relative z-10 w-full flex justify-center ${covered ? 'pt-2' : 'pt-1'}`}>
+          <ServingPlate />
+        </div>
+      </div>
+
+      {children}
     </div>
   );
 }
 
 // ─── COMPONENT CÁI TÔ ────────────────────────────────────────────────────────
 function BowlOverlay({ status }) {
-  // status: 'waiting' | 'locked' | 'rolling' | 'finished'
-  const isOpen = status === 'finished';
+  const [isVisible, setIsVisible] = useState(true);
+  const [animClass, setAnimClass] = useState('animate-bowl-cover');
+
+  useEffect(() => {
+    if (status === 'finished') {
+      setAnimClass('animate-bowl-uncover');
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+      }, 600); // 0.6s animation duration
+      return () => clearTimeout(timer);
+    } else {
+      setIsVisible(true);
+      setAnimClass('animate-bowl-cover');
+    }
+  }, [status]);
+
+  if (!isVisible) return null;
+
   const isShaking = status === 'rolling';
 
   return (
-    <div className={`absolute inset-0 flex items-center justify-center z-10 pointer-events-none transition-all duration-600
-      ${isOpen ? 'animate-bowl-uncover' : 'animate-bowl-cover'}
-    `}>
-      <div className={`w-56 h-56 sm:w-64 sm:h-64 relative drop-shadow-2xl ${isShaking ? 'animate-shake-dice' : ''}`}>
-        {/* Hình dáng cái tô úp ngược */}
-        <div className="absolute inset-0 bg-gradient-to-b from-amber-700 to-amber-900 rounded-full border-b-[12px] border-amber-950 shadow-[inset_0_-20px_40px_rgba(0,0,0,0.5)] flex items-center justify-center overflow-hidden">
-          {/* Họa tiết rồng/mây mờ */}
-          <div className="w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjA1KSIgc3Ryb2tlLXdpZHRoPSI0Ii8+PC9zdmc+')] opacity-50" />
+    <div
+      className={`absolute inset-0 flex items-center justify-center z-10 pointer-events-none ${animClass}`}
+    >
+      <div className={`relative w-[19rem] h-[19rem] sm:w-[22rem] sm:h-[22rem] drop-shadow-[0_16px_40px_rgba(0,0,0,0.6)] ${isShaking ? 'animate-shake-dice' : ''}`}>
+        <div className="absolute inset-0 rounded-full bg-gradient-to-b from-amber-600 via-amber-800 to-amber-950 border-b-[10px] border-amber-950 shadow-[inset_0_-24px_48px_rgba(0,0,0,0.55),inset_0_4px_12px_rgba(255,220,160,0.12)] overflow-hidden">
+          <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_50%_30%,rgba(255,230,180,0.2),transparent_60%)]" />
         </div>
-        {/* Đáy tô (ở trên cùng vì úp) */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-24 bg-amber-950 rounded-full border-b-8 border-amber-900 scale-y-50 -translate-y-8" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-20 sm:w-24 sm:h-24 bg-amber-950 rounded-full border-4 border-amber-900 scale-y-[0.45] -translate-y-6 sm:-translate-y-7 shadow-lg" />
       </div>
     </div>
   );
@@ -142,7 +228,27 @@ export default function BauCua() {
   const [resultPopup, setResultPopup] = useState(null); // { result, myProfit, myBets }
 
   const socketRef = useRef(null);
+  const userRef = useRef(user);
+  const updateBalanceRef = useRef(updateBalance);
   const token = localStorage.getItem('token');
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    updateBalanceRef.current = updateBalance;
+  }, [updateBalance]);
+
+  const loadHistory = useCallback(async () => {
+    if (!roomId) return;
+    try {
+      const res = await bauCuaAPI.getRoomHistory(roomId, { limit: 15 });
+      setHistory(res.data.data);
+    } catch {
+      // Lịch sử không bắt buộc — bỏ qua nếu tải thất bại
+    }
+  }, [roomId]);
 
   // ── KẾT NỐI SOCKET ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -155,7 +261,7 @@ export default function BauCua() {
       socket.emit('baucua:join_room', roomId);
     });
 
-    // Trạng thái phòng (ban đầu hoặc refresh)
+    // Trạng thái phòng / ván mới
     socket.on('baucua:room_state', (data) => {
       setRoundState({
         status: data.status,
@@ -167,6 +273,7 @@ export default function BauCua() {
       setDiceResult([null, null, null]);
       setRolling(false);
       setMyBets({});
+      setResultPopup(null);
     });
 
     // Ai đó đặt cược
@@ -175,12 +282,12 @@ export default function BauCua() {
     });
 
     // Đã khóa cược
-    socket.on('baucua:round_locked', ({ roundId }) => {
+    socket.on('baucua:round_locked', () => {
       setRoundState(prev => prev ? { ...prev, status: 'locked' } : prev);
     });
 
     // Đang lắc
-    socket.on('baucua:rolling', ({ duration }) => {
+    socket.on('baucua:rolling', () => {
       setRolling(true);
       setRoundState(prev => prev ? { ...prev, status: 'rolling' } : prev);
       if (soundEnabledRef.current) {
@@ -188,53 +295,40 @@ export default function BauCua() {
       }
     });
 
-    // Kết quả
+    // Kết quả (dùng ref — tránh reconnect socket khi balance/user đổi trước khi nhận event)
     socket.on('baucua:result', (data) => {
       setRolling(false);
       setDiceResult(data.result);
       setRoundState(prev => prev ? { ...prev, status: 'finished', bets: data.bets } : prev);
 
-      // Tính lợi nhuận cá nhân
-      if (user) {
-        const myBetsList = (data.bets || []).filter(b => b.userId === user._id && !b.isBot);
+      const currentUser = userRef.current;
+      if (currentUser) {
+        const myId = currentUser._id ?? currentUser.id;
+        const myBetsList = (data.bets || []).filter(b => sameUserId(b.userId, myId) && !b.isBot);
         const totalProfit = myBetsList.reduce((s, b) => s + (b.profit || 0), 0);
-        if (myBetsList.length > 0) {
+        const totalPayout = myBetsList.reduce((s, b) => s + (b.payout || 0), 0);
+        if (myBetsList.length > 0 && totalProfit > 0) {
           setResultPopup({ result: data.result, myProfit: totalProfit, myBets: myBetsList });
-          if (totalProfit > 0) {
-            if (soundEnabledRef.current) {
-              new Audio(winSoundPath).play().catch(e => console.warn(e));
-            }
-            toast.success(`🎉 Thắng +${totalProfit.toLocaleString()}đ!`, { autoClose: 4000 });
-            confetti({ particleCount: 100, spread: 70, origin: { y: 0.5 } });
-          } else if (totalProfit < 0) {
-            toast.error(`Thua ${Math.abs(totalProfit).toLocaleString()}đ. Cố lên!`, { autoClose: 3000 });
+          if (soundEnabledRef.current) {
+            new Audio(winSoundPath).play().catch(e => console.warn(e));
           }
+          toast.success(`🎉 Thắng +${totalProfit.toLocaleString()}đ (nhận ${totalPayout.toLocaleString()}đ)!`, { autoClose: 4000 });
+          confetti({ particleCount: 100, spread: 70, origin: { y: 0.5 } });
         }
-        // Cập nhật balance nếu server gửi
-        const newBal = data.userBalances?.[user._id];
-        if (newBal !== undefined && updateBalance) updateBalance(newBal);
+        const newBal = data.userBalances?.[String(myId)];
+        if (newBal !== undefined && updateBalanceRef.current) {
+          updateBalanceRef.current(newBal);
+        }
       }
 
-      // Load history
       loadHistory();
-    });
-
-    // Balance cập nhật
-    socket.on('balance:updated', ({ balance }) => {
-      if (updateBalance) updateBalance(balance);
-    });
-
-    // Phòng mới/ván mới sắp bắt đầu → reset
-    socket.on('baucua:room_state', (data) => {
-      setResultPopup(null);
-      setMyBets({});
     });
 
     return () => {
       socket.emit('baucua:leave_room', roomId);
       socket.disconnect();
     };
-  }, [roomId, token, user]);
+  }, [roomId, token, loadHistory]);
 
   // ── TẢI DỮ LIỆU BAN ĐẦU ──────────────────────────────────────────────────
   useEffect(() => {
@@ -256,7 +350,7 @@ export default function BauCua() {
             setDiceResult(round.result || [null, null, null]);
           }
         }
-      } catch (err) {
+      } catch {
         toast.error('Không thể tải thông tin phòng');
       } finally {
         setLoading(false);
@@ -264,14 +358,7 @@ export default function BauCua() {
     };
     fetchInitial();
     loadHistory();
-  }, [roomId]);
-
-  const loadHistory = async () => {
-    try {
-      const res = await bauCuaAPI.getRoomHistory(roomId, { limit: 15 });
-      setHistory(res.data.data);
-    } catch { }
-  };
+  }, [roomId, loadHistory]);
 
   // ── ĐẶT CƯỢC ─────────────────────────────────────────────────────────────
   const handleBet = async (symbolKey) => {
@@ -287,22 +374,12 @@ export default function BauCua() {
         new Audio(betSoundPath).play().catch(e => console.warn(e));
       }
       setMyBets(prev => ({ ...prev, [symbolKey]: (prev[symbolKey] || 0) + betAmount }));
-      toast.success(`Cược ${betAmount.toLocaleString()}đ vào ${SYMBOL_MAP[symbolKey].label}!`, { autoClose: 1500 });
     } catch (err) {
       toast.error(err.response?.data?.message || 'Đặt cược thất bại');
     } finally {
       setBetLoading(false);
     }
   };
-
-  // Tổng cược trong ván theo từng ô
-  const totalBetsBySymbol = roundState?.bets?.reduce((acc, b) => {
-    acc[b.symbol] = (acc[b.symbol] || 0) + b.amount;
-    return acc;
-  }, {}) || {};
-
-  const totalPlayers = [...new Set((roundState?.bets || []).filter(b => !b.isBot).map(b => b.userId?.toString()))].length;
-  const totalVolume = (roundState?.bets || []).reduce((s, b) => s + b.amount, 0);
 
   if (loading) {
     return (
@@ -352,9 +429,6 @@ export default function BauCua() {
               {soundEnabled ? <FiVolume2 className="text-green-400" /> : <FiVolumeX className="text-white/40" />}
               {soundEnabled ? 'Bật âm thanh' : 'Tắt âm thanh'}
             </button>
-            <div className="flex items-center gap-1 text-xs text-white/40">
-              <FiUsers /> {totalPlayers} người
-            </div>
             <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20">
               <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
               <span className="text-[9px] text-red-400 font-bold">LIVE</span>
@@ -370,32 +444,6 @@ export default function BauCua() {
             {/* Countdown */}
             <div className="glass-card p-4">
               <CountdownBar endsAt={roundState?.waitingEndsAt} status={roundState?.status} />
-            </div>
-
-            {/* Tổng cược */}
-            <div className="glass-card p-4 space-y-2">
-              <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Tổng bàn</p>
-              <div className="flex justify-between text-xs">
-                <span className="text-white/50">Tổng tiền cược</span>
-                <span className="font-bold text-amber-400">{totalVolume.toLocaleString()}đ</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-white/50">Người chơi</span>
-                <span className="font-bold text-white">{totalPlayers}</span>
-              </div>
-            </div>
-
-            {/* Phạm vi cược */}
-            <div className="glass-card p-4 space-y-2">
-              <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Phòng</p>
-              <div className="flex justify-between text-xs">
-                <span className="text-white/50">Cược tối thiểu</span>
-                <span className="font-bold text-green-400">{room.minBet.toLocaleString()}đ</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-white/50">Cược tối đa</span>
-                <span className="font-bold text-red-400">{room.maxBet.toLocaleString()}đ</span>
-              </div>
             </div>
 
             {/* Lịch sử ván */}
@@ -423,38 +471,21 @@ export default function BauCua() {
           {/* CỘT GIỮA: ĐĨA XÓC + BÀN CƯỢC */}
           <div className="lg:col-span-6 space-y-5">
 
-            {/* 3 xúc xắc & Cái tô */}
-            <div className="glass-card p-6 relative overflow-hidden">
-              <div className="flex items-center justify-center gap-4 py-8">
-                {[0, 1, 2].map(i => (
-                  <DiceDisplay
-                    key={i}
-                    symbol={diceResult[i]}
-                    rolling={rolling}
-                    revealed={!rolling && diceResult[i] !== null}
-                  />
-                ))}
-              </div>
+            {/* Dĩa xóc + 3 con + cái tô */}
+            <div className="glass-card px-4 sm:px-6 pt-4 pb-5 relative overflow-hidden">
+              <DicePlateArea
+                diceResult={diceResult}
+                rolling={rolling}
+                status={roundState?.status}
+              >
+                {roundState && <BowlOverlay status={roundState.status} />}
+              </DicePlateArea>
 
-              {/* Lớp overlay cái tô */}
-              {roundState && (
-                <BowlOverlay status={roundState.status} />
-              )}
-
-              {/* Kết quả popup */}
               {resultPopup && !rolling && (
-                <div className="mt-4 p-3 rounded-xl bg-white/5 border border-white/8 text-center animate-scale-in">
-                  {resultPopup.myProfit > 0 ? (
-                    <p className="text-green-400 font-black text-lg">
-                      🎉 Thắng <span className="font-mono">+{resultPopup.myProfit.toLocaleString()}đ</span>
-                    </p>
-                  ) : resultPopup.myProfit < 0 ? (
-                    <p className="text-red-400 font-bold">
-                      😔 Thua {Math.abs(resultPopup.myProfit).toLocaleString()}đ
-                    </p>
-                  ) : (
-                    <p className="text-white/50 font-bold">Hòa vốn</p>
-                  )}
+                <div className="mt-1 p-3 rounded-xl bg-white/5 border border-white/8 text-center animate-scale-in">
+                  <p className="text-green-400 font-black text-lg">
+                    🎉 Thắng <span className="font-mono">+{resultPopup.myProfit.toLocaleString()}đ</span>
+                  </p>
                 </div>
               )}
             </div>
@@ -502,19 +533,33 @@ export default function BauCua() {
                   const appearances = symResult ? diceResult.filter(r => r === sym.key).length : 0;
                   const isWinner = symResult && appearances > 0;
                   const myBetAmt = myBets[sym.key] || 0;
-                  const tableBetAmt = totalBetsBySymbol[sym.key] || 0;
                   const canBet = roundState?.status === 'waiting' && isAuthenticated;
+
+                  // CSS dynamic classes for high fidelity display
+                  const baseClass = "relative p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all duration-300 overflow-hidden";
+                  let stateClass = "";
+                  
+                  if (roundState?.status === 'finished') {
+                    if (isWinner) {
+                      stateClass = `${sym.border} ${sym.glow} bg-gradient-to-br ${sym.color}/15 scale-105 opacity-100 cursor-default`;
+                    } else {
+                      stateClass = "border-transparent opacity-30 cursor-default";
+                    }
+                  } else if (canBet) {
+                    stateClass = `${sym.border} bg-gradient-to-br ${sym.color}/5 hover:bg-gradient-to-br hover:${sym.color}/15 hover:scale-105 hover:${sym.glow} active:scale-95 cursor-pointer opacity-100`;
+                  } else {
+                    stateClass = "border-white/8 opacity-60 cursor-default";
+                  }
+                  
+                  const ringClass = myBetAmt > 0 ? "ring-2 ring-amber-400/50" : "";
+                  const buttonClass = `${baseClass} ${stateClass} ${ringClass}`;
 
                   return (
                     <button
                       key={sym.key}
                       onClick={() => canBet && handleBet(sym.key)}
                       disabled={!canBet || betLoading}
-                      className={`relative p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all duration-300 overflow-hidden
-                        ${isWinner ? `${sym.border} ${sym.glow} bg-gradient-to-br ${sym.color}/15 scale-105` : ''}
-                        ${canBet ? `${sym.border} bg-gradient-to-br ${sym.color}/5 hover:bg-gradient-to-br hover:${sym.color}/15 hover:scale-105 hover:${sym.glow} active:scale-95 cursor-pointer` : 'border-white/8 opacity-60 cursor-default'}
-                        ${myBetAmt > 0 ? 'ring-2 ring-amber-400/50' : ''}
-                      `}
+                      className={buttonClass}
                     >
                       {isWinner && appearances > 0 && (
                         <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-amber-400 text-black text-[9px] font-black flex items-center justify-center">
@@ -523,9 +568,6 @@ export default function BauCua() {
                       )}
                       <span className="text-3xl">{sym.emoji}</span>
                       <span className="text-[11px] font-bold text-white">{sym.label}</span>
-                      {tableBetAmt > 0 && (
-                        <span className="text-[9px] text-white/50">{tableBetAmt.toLocaleString()}đ</span>
-                      )}
                       {myBetAmt > 0 && (
                         <span className="text-[9px] font-bold text-amber-400">
                           Của tôi: {myBetAmt.toLocaleString()}đ
@@ -555,7 +597,7 @@ export default function BauCua() {
                 ) : (
                   [...(roundState?.bets || [])].reverse().map((b, i) => {
                     const sym = SYMBOL_MAP[b.symbol];
-                    const isMe = b.userId === user?._id;
+                    const isMe = sameUserId(b.userId, user?._id ?? user?.id);
                     return (
                       <div key={i} className={`flex items-center gap-2 p-2 rounded-lg text-[11px] transition-all
                         ${isMe ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-white/3'}`}>

@@ -4,7 +4,7 @@ const BauCuaRound = require('../models/BauCuaRound');
 const User = require('../models/User');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
 const { BAUCUA_STATUS, BAUCUA_SYMBOLS, BAUCUA_LIMITS } = require('../config/constants');
-const { getIO } = require('../config/socket');
+const { getIO, emitToUser } = require('../config/socket');
 
 /**
  * GET /api/baucua/rooms
@@ -70,8 +70,9 @@ const placeBet = async (req, res, next) => {
     if (amt < room.minBet) return errorResponse(res, `Cược tối thiểu phòng này là ${room.minBet.toLocaleString()}đ`, 400);
     if (amt > room.maxBet) return errorResponse(res, `Cược tối đa phòng này là ${room.maxBet.toLocaleString()}đ`, 400);
 
-    // Lấy ván đang mở cược
-    const round = await BauCuaRound.findOne({ roomId, status: BAUCUA_STATUS.WAITING });
+    // Lấy ván đang mở cược (mới nhất — tránh trúng ván WAITING cũ bị kẹt)
+    const round = await BauCuaRound.findOne({ roomId, status: BAUCUA_STATUS.WAITING })
+      .sort({ roundNumber: -1 });
     if (!round) return errorResponse(res, 'Hiện không có ván đang nhận cược. Vui lòng chờ ván mới.', 400);
 
     // Kiểm tra số dư
@@ -106,8 +107,7 @@ const placeBet = async (req, res, next) => {
       timestamp: new Date(),
     });
 
-    // Cập nhật balance cá nhân
-    io.to(`user:${userId}`).emit('balance:updated', { balance: updatedUser.balance });
+    emitToUser(userId, 'balance:updated', { balance: updatedUser.balance });
 
     return successResponse(res, {
       bet,

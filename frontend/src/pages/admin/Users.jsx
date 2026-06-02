@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { adminAPI } from '../../services/api';
 import { toast } from 'react-toastify';
-import { FiRefreshCw, FiSearch, FiTrash2, FiRotateCcw, FiPlusCircle, FiUser, FiInfo } from 'react-icons/fi';
+import { FiRefreshCw, FiSearch, FiTrash2, FiRotateCcw, FiPlusCircle, FiMinusCircle, FiInfo } from 'react-icons/fi';
 
 export default function AdminUsers() {
   const [items, setItems] = useState([]);
@@ -15,6 +15,7 @@ export default function AdminUsers() {
 
   // Modal điều chỉnh số dư ví user
   const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [adjustMode, setAdjustMode] = useState('add'); // 'add' | 'subtract'
   const [adjustForm, setAdjustForm] = useState({
     userId: '',
     username: '',
@@ -65,24 +66,29 @@ export default function AdminUsers() {
     }
   };
 
-  const openAdjustModal = (u) => {
+  const openAdjustModal = (u, mode = 'add') => {
+    setAdjustMode(mode);
     setAdjustForm({
       userId: u._id,
       username: u.username,
       amount: '',
-      description: 'Điều chỉnh số dư ví bởi Admin',
+      description: mode === 'subtract'
+        ? 'Admin trừ tiền ví'
+        : 'Admin cộng tiền ví',
     });
     setShowAdjustModal(true);
   };
 
   const handleAdjustBalance = async (e) => {
     e.preventDefault();
-    const amountVal = parseFloat(adjustForm.amount);
+    const raw = parseFloat(adjustForm.amount);
 
-    if (isNaN(amountVal) || amountVal === 0) {
-      toast.error('Số tiền phải là số hợp lệ và khác 0');
+    if (isNaN(raw) || raw <= 0) {
+      toast.error('Số tiền phải là số dương hợp lệ');
       return;
     }
+
+    const amountVal = adjustMode === 'subtract' ? -raw : raw;
 
     setAdjustLoading(true);
     try {
@@ -91,7 +97,11 @@ export default function AdminUsers() {
         amountVal,
         adjustForm.description
       );
-      toast.success(`Đã điều chỉnh thành công số dư cho user ${adjustForm.username}`);
+      toast.success(
+        adjustMode === 'subtract'
+          ? `Đã trừ ${raw.toLocaleString()}đ khỏi ví user ${adjustForm.username}`
+          : `Đã cộng ${raw.toLocaleString()}đ vào ví user ${adjustForm.username}`
+      );
       setShowAdjustModal(false);
       fetchData();
     } catch (err) {
@@ -144,10 +154,10 @@ export default function AdminUsers() {
             <tbody className="divide-y divide-white/5">
               {loading ? (
                 [...Array(10)].map((_, i) => (
-                  <tr key={i}><td className="p-4" colSpan={5}><div className="skeleton h-8 w-full rounded-xl" /></td></tr>
+                  <tr key={i}><td className="p-4" colSpan={6}><div className="skeleton h-8 w-full rounded-xl" /></td></tr>
                 ))
               ) : items.length === 0 ? (
-                <tr><td className="p-6 text-white/40" colSpan={5}>Không có user</td></tr>
+                <tr><td className="p-6 text-white/40" colSpan={6}>Không có user</td></tr>
               ) : (
                 items.map((u) => (
                   <tr key={u._id} className="text-white/70">
@@ -174,10 +184,16 @@ export default function AdminUsers() {
                     <td className="p-4">
                       <div className="flex justify-end gap-2">
                         <button
-                          onClick={() => openAdjustModal(u)}
+                          onClick={() => openAdjustModal(u, 'add')}
                           className="px-3 py-2 rounded-xl bg-primary-500/10 border border-primary-500/20 text-primary-400 hover:bg-primary-500/20 transition-all inline-flex items-center gap-2"
                         >
                           <FiPlusCircle /> Cộng tiền
+                        </button>
+                        <button
+                          onClick={() => openAdjustModal(u, 'subtract')}
+                          className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 transition-all inline-flex items-center gap-2"
+                        >
+                          <FiMinusCircle /> Trừ tiền
                         </button>
                         {u.isActive ? (
                           <button
@@ -236,21 +252,33 @@ export default function AdminUsers() {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowAdjustModal(false)} />
           <div className="relative glass-card p-6 w-full max-w-md animate-scale-in">
             <h2 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-              <FiUser className="text-primary-400" /> Điều Chỉnh Số Dư
+              {adjustMode === 'subtract' ? (
+                <FiMinusCircle className="text-amber-400" />
+              ) : (
+                <FiPlusCircle className="text-primary-400" />
+              )}
+              {adjustMode === 'subtract' ? 'Trừ Tiền Ví' : 'Cộng Tiền Ví'}
             </h2>
             <p className="text-xs text-white/40 mb-6">
-              Bạn đang thay đổi số dư ví trực tiếp cho tài khoản: <span className="text-white font-bold">{adjustForm.username}</span>
+              {adjustMode === 'subtract' ? 'Trừ số dư' : 'Cộng số dư'} cho tài khoản:{' '}
+              <span className="text-white font-bold">{adjustForm.username}</span>
             </p>
 
             <form onSubmit={handleAdjustBalance} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-white/60 mb-2">Số tiền muốn thay đổi (VNĐ)</label>
+                <label className="block text-xs font-semibold text-white/60 mb-2">
+                  Số tiền {adjustMode === 'subtract' ? 'trừ' : 'cộng'} (VNĐ)
+                </label>
                 <input
                   type="number"
-                  placeholder="Cộng tiền nhập số dương (e.g. 50000), trừ tiền nhập số âm (e.g. -50000)"
+                  min="1"
+                  step="1"
+                  placeholder={adjustMode === 'subtract' ? 'VD: 50000' : 'VD: 50000'}
                   value={adjustForm.amount}
                   onChange={(e) => setAdjustForm({ ...adjustForm, amount: e.target.value })}
-                  className="input-field py-2 text-xs font-bold text-white"
+                  className={`input-field py-2 text-xs font-bold text-white ${
+                    adjustMode === 'subtract' ? 'border-amber-500/30 focus:border-amber-500/50' : ''
+                  }`}
                   required
                 />
               </div>
@@ -284,9 +312,17 @@ export default function AdminUsers() {
                 <button
                   type="submit"
                   disabled={adjustLoading}
-                  className="btn-primary px-5 py-2 text-xs font-bold hover:shadow-glow-primary"
+                  className={`px-5 py-2 text-xs font-bold rounded-xl transition-all disabled:opacity-50 ${
+                    adjustMode === 'subtract'
+                      ? 'bg-amber-500 text-black hover:bg-amber-400'
+                      : 'btn-primary hover:shadow-glow-primary'
+                  }`}
                 >
-                  {adjustLoading ? 'Đang xử lý...' : 'Xác Nhận Thay Đổi'}
+                  {adjustLoading
+                    ? 'Đang xử lý...'
+                    : adjustMode === 'subtract'
+                      ? 'Xác Nhận Trừ Tiền'
+                      : 'Xác Nhận Cộng Tiền'}
                 </button>
               </div>
             </form>

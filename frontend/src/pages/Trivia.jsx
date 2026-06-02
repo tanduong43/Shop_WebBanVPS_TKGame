@@ -7,8 +7,12 @@ import { useAuth } from '../context/AuthContext';
 import { triviaAPI } from '../services/api';
 import {
   FiUsers, FiPlay, FiCopy, FiZap, FiShield, FiHeart,
-  FiArrowLeft, FiClock,
+  FiArrowLeft, FiClock, FiMinus, FiPlus,
 } from 'react-icons/fi';
+
+const MIN_TRIVIA_PLAYERS = 2;
+const MAX_TRIVIA_PLAYERS = 10;
+const clampTriviaPlayers = (n) => Math.min(MAX_TRIVIA_PLAYERS, Math.max(MIN_TRIVIA_PLAYERS, n));
 
 // Socket URL: ưu tiên VITE_SOCKET_URL, fallback lấy từ VITE_API_URL (bỏ /api), cuối cùng dùng localhost
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL
@@ -181,7 +185,12 @@ export default function Trivia() {
 
   const handleCreateRoom = () => {
     const socket = connectSocket();
-    socket.emit('trivia:create_room', { topicId: createTopicId, maxPlayers, withBot, questionMode });
+    socket.emit('trivia:create_room', {
+      topicId: createTopicId,
+      maxPlayers: clampTriviaPlayers(maxPlayers),
+      withBot,
+      questionMode,
+    });
   };
 
   const handleJoinRoom = () => {
@@ -244,14 +253,32 @@ export default function Trivia() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-white/50 text-xs">Số người (2-10)</label>
-                  <input
-                    type="number"
-                    min={2}
-                    max={10}
-                    value={maxPlayers}
-                    onChange={(e) => setMaxPlayers(Number(e.target.value))}
-                    className="input-field w-full mt-1"
-                  />
+                  <div className="flex items-center gap-2 mt-1">
+                    <button
+                      type="button"
+                      aria-label="Giảm số người"
+                      disabled={maxPlayers <= MIN_TRIVIA_PLAYERS}
+                      onClick={() => setMaxPlayers((p) => clampTriviaPlayers(p - 1))}
+                      className="w-10 h-10 shrink-0 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 disabled:opacity-30 transition-all"
+                    >
+                      <FiMinus className="text-sm" />
+                    </button>
+                    <div
+                      className="input-field flex-1 text-center font-bold font-mono py-2 select-none pointer-events-none"
+                      aria-live="polite"
+                    >
+                      {maxPlayers}
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="Tăng số người"
+                      disabled={maxPlayers >= MAX_TRIVIA_PLAYERS}
+                      onClick={() => setMaxPlayers((p) => clampTriviaPlayers(p + 1))}
+                      className="w-10 h-10 shrink-0 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 disabled:opacity-30 transition-all"
+                    >
+                      <FiPlus className="text-sm" />
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="text-white/50 text-xs">Số câu hỏi</label>
