@@ -6,6 +6,7 @@ const {
   getTopics,
   getTopicsAdmin,
   createTopic,
+  deleteTopic,
   getQuestions,
   createQuestion,
   importQuestions,
@@ -21,6 +22,7 @@ router.get('/topics', getTopics);
 // Admin routes
 router.get('/topics/admin', authMiddleware, requireAdmin, getTopicsAdmin);
 router.post('/topics', authMiddleware, requireAdmin, createTopic);
+router.delete('/topics/:id', authMiddleware, requireAdmin, mongoIdParam('id'), deleteTopic);
 router.get('/', authMiddleware, requireAdmin, getQuestions);
 router.post('/', authMiddleware, requireAdmin, createQuestion);
 router.post('/import', authMiddleware, requireAdmin, uploadJsonMiddleware, importQuestions);

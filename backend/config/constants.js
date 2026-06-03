@@ -64,30 +64,30 @@ const BAUCUA_MODE = {
 };
 
 const BAUCUA_LIMITS = {
-  MIN_BET: 1000,
-  MAX_BET: 500000,
-  BOT_COUNT_MIN: 5,
-  BOT_COUNT_MAX: 10,
-  WAITING_SECONDS: 15,
-  ROLLING_SECONDS: 4,
-  RESULT_DISPLAY_SECONDS: 5,
-  LOW_BET_THRESHOLD: 100000,   // Ngưỡng tiền cược thấp (Mode 1)
-  LOW_USER_THRESHOLD: 2,       // Số user thực thấp (Mode 1)
-  SAVE_USER_STREAK: 3,         // Thua liên tiếp (Mode 2)
+  MIN_BET: 1000,                  // Tiền cược tối thiểu (1,000đ)
+  MAX_BET: 500000,                // Tiền cược tối đa mỗi ô (500,000đ)
+  BOT_COUNT_MIN: 5,               // Số lượng bot tối thiểu tham gia đặt cược ảo
+  BOT_COUNT_MAX: 10,              // Số lượng bot tối đa tham gia đặt cược ảo
+  WAITING_SECONDS: 15,            // Thời gian đếm ngược để người chơi đặt cược (15 giây)
+  ROLLING_SECONDS: 4,             // Thời gian lắc xúc xắc và chạy hoạt ảnh (4 giây)
+  RESULT_DISPLAY_SECONDS: 3,      // Thời gian hiển thị kết quả xúc xắc trước khi sang ván mới (3 giây)
+  LOW_BET_THRESHOLD: 100000,     // Tổng tiền cược dưới ngưỡng này sẽ chạy chế độ Ngẫu nhiên hoàn toàn (Mode 1)
+  LOW_USER_THRESHOLD: 2,         // Số lượng user dưới ngưỡng này sẽ chạy chế độ Ngẫu nhiên hoàn toàn (Mode 1)
+  SAVE_USER_STREAK: 3,           // User thua liên tiếp quá số ván này sẽ được kích hoạt cơ chế Thả mồi/Cứu trợ (Mode 2)
 };
 
 // Đố Vui Sinh Tồn (Trivia Battle Royale) constants
 const TRIVIA_LIMITS = {
-  MIN_PLAYERS: 2,
-  MAX_PLAYERS: 10,
-  STARTING_HP: 100,
-  QUESTIONS_PER_GAME: 10,
-  MIN_QUESTIONS_REQUIRED: 5,
-  QUESTION_SECONDS: 10,
-  RESULT_DISPLAY_SECONDS: 3,
-  DAMAGE_SHIELD: 0,
-  DAMAGE_SLOW: 5,
-  DAMAGE_WRONG: 15,
+  MIN_PLAYERS: 2,                 // Số lượng người chơi tối thiểu để bắt đầu trận đấu (2 người)
+  MAX_PLAYERS: 10,                // Số lượng người chơi tối đa trong một phòng đấu (10 người)
+  STARTING_HP: 100,               // Lượng máu (HP) ban đầu của mỗi người chơi (100 HP)
+  QUESTIONS_PER_GAME: 10,         // Số lượng câu hỏi mặc định của mỗi trận đấu (10 câu)
+  MIN_QUESTIONS_REQUIRED: 5,      // Số lượng câu hỏi tối thiểu của đề tài để được phép bắt đầu chơi (5 câu)
+  QUESTION_SECONDS: 5,            // Thời gian đếm ngược để trả lời mỗi câu hỏi (5 giây)
+  RESULT_DISPLAY_SECONDS: 3,      // Thời gian hiển thị kết quả và đáp án đúng của câu hỏi hiện tại (5 giây)
+  DAMAGE_SHIELD: 0,               // Sát thương khi trả lời ĐÚNG và NHANH NHẤT (0 sát thương - nhận khiên)
+  DAMAGE_SLOW: 5,                 // Sát thương khi trả lời ĐÚNG nhưng CHẬM hơn người nhanh nhất (bị trừ 5 HP)
+  DAMAGE_WRONG: 15,               // Sát thương khi trả lời SAI hoặc không trả lời/AFK (bị trừ 15 HP)
 };
 
 const TRIVIA_PLAYER_STATUS = {

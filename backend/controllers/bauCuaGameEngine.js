@@ -71,9 +71,9 @@ const activeRooms = new Map(); // roomId -> { timer, currentRoundId }
 
 // ─── BOT DATA ────────────────────────────────────────────────────────────────
 const BOT_NAMES = [
-  'Long_Bear', 'TigerKing99', 'lucky_star', 'ProBet_2k',
-  'NightWolf', 'GoldFish88', 'DragonLord', 'QuickBet',
-  'VIP_Player', 'Master_Game', 'RedRooster', 'BlueShark',
+  'Dylan_Nguyen', 'Nguyen_Duc_Hung', 'TanMinh', 'Diep_Nguyen',
+  'BaoHo', 'NgocLy', 'MinhLy', 'CatHa',
+  'BichNgoc', 'MinhHa', 'TuanAnh', 'TienLuu',
 ];
 
 function getRandomBots(count) {

@@ -29,11 +29,35 @@ export const SocketProvider = ({ children }) => {
       auth: { token },
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
 
     socketClient.on('connect', () => {
       console.log('⚡ Socket.IO connected successfully');
+    });
+
+    socketClient.on('disconnect', (reason) => {
+      console.warn('⚠️ Socket disconnected:', reason);
+      if (reason === 'io server disconnect') {
+        socketClient.connect();
+      } else {
+        toast.warning('Mất kết nối thời gian thực. Đang kết nối lại...', {
+          toastId: 'socket-disconnect',
+          autoClose: false,
+          closeOnClick: false,
+          draggable: false,
+        });
+      }
+    });
+
+    socketClient.on('reconnect', (attemptNumber) => {
+      console.log('⚡ Socket reconnected after', attemptNumber, 'attempts');
+      toast.dismiss('socket-disconnect');
+      toast.success('Đã khôi phục kết nối thời gian thực!', {
+        autoClose: 3000,
+      });
     });
 
     socketClient.on('connect_error', (err) => {

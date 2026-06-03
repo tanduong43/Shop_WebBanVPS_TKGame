@@ -227,11 +227,27 @@ const deleteQuestion = async (req, res, next) => {
   }
 };
 
+const deleteTopic = async (req, res, next) => {
+  try {
+    const topicId = req.params.id;
+    const topic = await Topic.findByIdAndDelete(topicId);
+    if (!topic) {
+      return errorResponse(res, 'Đề tài không tồn tại', 404);
+    }
+    // Xóa tất cả câu hỏi thuộc đề tài này
+    await Question.deleteMany({ topicId });
+    return successResponse(res, null, 'Xóa đề tài và các câu hỏi liên quan thành công');
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   uploadJsonMiddleware,
   getTopics,
   getTopicsAdmin,
   createTopic,
+  deleteTopic,
   getQuestions,
   createQuestion,
   importQuestions,

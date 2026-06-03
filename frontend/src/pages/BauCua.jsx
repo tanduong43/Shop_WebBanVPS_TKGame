@@ -327,10 +327,33 @@ export default function BauCua() {
   useEffect(() => {
     if (!token) return;
 
-    const socket = socketIO(SOCKET_URL, { auth: { token } });
+    const socket = socketIO(SOCKET_URL, {
+      auth: { token },
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+    });
     socketRef.current = socket;
 
     socket.on('connect', () => {
+      socket.emit('baucua:join_room', roomId);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.warn('⚠️ BauCua socket disconnected:', reason);
+      toast.warning('Mất kết nối game Bầu Cua. Đang tự động kết nối lại...', {
+        toastId: 'baucua-disconnect',
+        autoClose: false,
+        closeOnClick: false,
+        draggable: false,
+      });
+    });
+
+    socket.on('reconnect', (attemptNumber) => {
+      console.log('⚡ BauCua socket reconnected after', attemptNumber, 'attempts');
+      toast.dismiss('baucua-disconnect');
+      toast.success('Đã kết nối lại game Bầu Cua!', { autoClose: 3000 });
       socket.emit('baucua:join_room', roomId);
     });
 

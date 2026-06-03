@@ -29,6 +29,15 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Lỗi kết nối mạng (Network Error / Timeout / Disconnected)
+    if (!error.response) {
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        toast.error('Kết nối mạng quá yếu (yêu cầu quá hạn). Vui lòng kiểm tra lại đường truyền.');
+      } else {
+        toast.error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.');
+      }
+    }
+
     // Token hết hạn hoặc không hợp lệ → logout
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
@@ -129,6 +138,7 @@ export const triviaAPI = {
   getTopics:       ()               => api.get('/questions/topics'),
   getTopicsAdmin:  ()               => api.get('/questions/topics/admin'),
   createTopic:     (data)           => api.post('/questions/topics', data),
+  deleteTopic:     (id)             => api.delete(`/questions/topics/${id}`),
   getQuestions:    (params)         => api.get('/questions', { params }),
   createQuestion:  (data)           => api.post('/questions', data),
   deleteQuestion:  (id)             => api.delete(`/questions/${id}`),

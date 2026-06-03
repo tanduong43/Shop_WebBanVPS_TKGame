@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import {
   FiUpload, FiPlus, FiTrash2, FiRefreshCw, FiBookOpen, FiFileText,
 } from 'react-icons/fi';
+import Pagination from '../../components/Pagination';
 
 const emptyForm = {
   topicId: '',
@@ -14,6 +15,25 @@ const emptyForm = {
   difficulty: 'A1',
 };
 
+const emptyTopicForm = {
+  name: '',
+  description: '',
+  slug: '',
+};
+
+const slugify = (text) => {
+  return text
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .replace(/([^a-z0-9\s-]|_)+/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+};
+
 export default function AdminQuestions() {
   const [topics, setTopics] = useState([]);
   const [questions, setQuestions] = useState([]);
@@ -21,18 +41,30 @@ export default function AdminQuestions() {
   const [importing, setImporting] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
+  const [topicForm, setTopicForm] = useState(emptyTopicForm);
+  const [showTopicForm, setShowTopicForm] = useState(false);
   const [filterTopic, setFilterTopic] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalQuestions, setTotalQuestions] = useState(0);
   const fileRef = useRef(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (p = 1) => {
     setLoading(true);
     try {
       const [topicsRes, questionsRes] = await Promise.all([
         triviaAPI.getTopicsAdmin(),
-        triviaAPI.getQuestions(filterTopic ? { topicId: filterTopic } : {}),
+        triviaAPI.getQuestions({
+          page: p,
+          limit: 15,
+          ...(filterTopic ? { topicId: filterTopic } : {}),
+        }),
       ]);
       setTopics(topicsRes.data.data || []);
       setQuestions(questionsRes.data.data || []);
+      setTotalPages(questionsRes.data.pagination?.totalPages || 1);
+      setPage(questionsRes.data.pagination?.page || 1);
+      setTotalQuestions(questionsRes.data.pagination?.total || 0);
     } catch {
       toast.error('Không tải được dữ liệu câu hỏi');
     } finally {
@@ -41,8 +73,12 @@ export default function AdminQuestions() {
   }, [filterTopic]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchData(page);
+  }, [fetchData, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filterTopic]);
 
   const handleImport = async (e) => {
     const file = e.target.files?.[0];
@@ -52,7 +88,7 @@ export default function AdminQuestions() {
     try {
       const res = await triviaAPI.importQuestions(file);
       toast.success(res.data.message || 'Import thành công');
-      fetchData();
+      fetchData(1);
     } catch (err) {
       const msg = err.response?.data?.message || 'Import thất bại';
       const errors = err.response?.data?.errors;
@@ -73,9 +109,40 @@ export default function AdminQuestions() {
       toast.success('Thêm câu hỏi thành công');
       setForm(emptyForm);
       setShowForm(false);
-      fetchData();
+      fetchData(1);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Không thể thêm câu hỏi');
+    }
+  };
+
+  const handleCreateTopic = async (e) => {
+    e.preventDefault();
+    try {
+      await triviaAPI.createTopic({
+        name: topicForm.name.trim(),
+        description: topicForm.description.trim(),
+        slug: topicForm.slug.trim() || undefined,
+      });
+      toast.success('Thêm đề tài thành công');
+      setTopicForm(emptyTopicForm);
+      setShowTopicForm(false);
+      fetchData(1);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Không thể thêm đề tài');
+    }
+  };
+
+  const handleDeleteTopic = async (id) => {
+    if (!window.confirm('Xóa đề tài này sẽ xóa tất cả câu hỏi thuộc đề tài này. Bạn có chắc chắn muốn xóa?')) return;
+    try {
+      await triviaAPI.deleteTopic(id);
+      toast.success('Đã xóa đề tài');
+      if (filterTopic === id) {
+        setFilterTopic('');
+      }
+      fetchData(1);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Không thể xóa đề tài');
     }
   };
 
@@ -84,7 +151,7 @@ export default function AdminQuestions() {
     try {
       await triviaAPI.deleteQuestion(id);
       toast.success('Đã xóa');
-      fetchData();
+      fetchData(page);
     } catch {
       toast.error('Không thể xóa');
     }
@@ -121,6 +188,13 @@ export default function AdminQuestions() {
           >
             <FiPlus /> Thêm câu hỏi
           </button>
+          <button
+            type="button"
+            onClick={() => setShowTopicForm(true)}
+            className="btn-primary flex items-center gap-2 text-sm"
+          >
+            <FiPlus /> Thêm đề tài
+          </button>
           <label className="btn-secondary flex items-center gap-2 text-sm cursor-pointer">
             <FiUpload />
             {importing ? 'Đang import...' : 'Upload JSON File'}
@@ -133,7 +207,7 @@ export default function AdminQuestions() {
               onChange={handleImport}
             />
           </label>
-          <button type="button" onClick={fetchData} className="btn-secondary p-2.5">
+          <button type="button" onClick={() => fetchData(page)} className="btn-secondary p-2.5">
             <FiRefreshCw />
           </button>
         </div>
@@ -151,10 +225,20 @@ export default function AdminQuestions() {
       {/* Topics summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {topics.map((t) => (
-          <div key={t._id} className="glass-card p-4">
-            <p className="text-white font-semibold text-sm">{t.name}</p>
-            <p className="text-white/40 text-xs mt-1">{t.description}</p>
-            <p className="text-primary-400 text-[10px] mt-2 font-mono truncate">ID: {t._id}</p>
+          <div key={t._id} className="glass-card p-4 relative group">
+            <div className="pr-6">
+              <p className="text-white font-semibold text-sm">{t.name}</p>
+              <p className="text-white/40 text-xs mt-1">{t.description}</p>
+              <p className="text-primary-400 text-[10px] mt-2 font-mono truncate">ID: {t._id}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleDeleteTopic(t._id)}
+              className="absolute top-3 right-3 p-1.5 text-white/30 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+              title="Xóa đề tài"
+            >
+              <FiTrash2 size={14} />
+            </button>
           </div>
         ))}
       </div>
@@ -171,7 +255,7 @@ export default function AdminQuestions() {
             <option key={t._id} value={t._id}>{t.name}</option>
           ))}
         </select>
-        <span className="text-white/40 text-sm">{questions.length} câu hỏi</span>
+        <span className="text-white/40 text-sm">Tổng số: {totalQuestions} câu hỏi</span>
       </div>
 
       {/* Questions table */}
@@ -218,6 +302,17 @@ export default function AdminQuestions() {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex justify-end">
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p)}
+          />
+        </div>
+      )}
 
       {/* Add question modal */}
       {showForm && (
@@ -275,6 +370,66 @@ export default function AdminQuestions() {
 
             <div className="flex gap-2 justify-end pt-2">
               <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Hủy</button>
+              <button type="submit" className="btn-primary">Lưu</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Add topic modal */}
+      {showTopicForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowTopicForm(false)} />
+          <form
+            onSubmit={handleCreateTopic}
+            className="relative glass-card p-6 w-full max-w-lg space-y-4 animate-scale-in"
+          >
+            <h2 className="text-lg font-bold text-white">Thêm đề tài mới</h2>
+
+            <div className="space-y-1">
+              <label className="text-xs text-white/60">Tên đề tài</label>
+              <input
+                required
+                type="text"
+                placeholder="Ví dụ: Từ vựng tiếng Anh"
+                value={topicForm.name}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setTopicForm({
+                    ...topicForm,
+                    name: val,
+                    slug: slugify(val),
+                  });
+                }}
+                className="input-field w-full"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs text-white/60">Slug (Đường dẫn tĩnh)</label>
+              <input
+                required
+                type="text"
+                placeholder="tu-vung-tieng-anh"
+                value={topicForm.slug}
+                onChange={(e) => setTopicForm({ ...topicForm, slug: e.target.value })}
+                className="input-field w-full"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs text-white/60">Mô tả</label>
+              <textarea
+                rows={3}
+                placeholder="Mô tả tóm tắt nội dung đề tài..."
+                value={topicForm.description}
+                onChange={(e) => setTopicForm({ ...topicForm, description: e.target.value })}
+                className="input-field w-full resize-none"
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <button type="button" onClick={() => setShowTopicForm(false)} className="btn-secondary">Hủy</button>
               <button type="submit" className="btn-primary">Lưu</button>
             </div>
           </form>

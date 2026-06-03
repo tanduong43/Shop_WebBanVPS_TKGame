@@ -71,14 +71,62 @@ const generalLimiter = rateLimit({
   message: { success: false, message: 'Quá nhiều yêu cầu, vui lòng thử lại sau.' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded && decoded.role === 'admin') {
+          return true; // Không giới hạn request đối với tài khoản admin
+        }
+      }
+    } catch (e) {
+      // Bỏ qua lỗi giải mã token
+    }
+    return false;
+  },
 });
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 phút
+  windowMs: 10 * 60 * 1000, // 10 phút
   max: 20,                   // Tối đa 20 lần thử đăng nhập
   message: { success: false, message: 'Quá nhiều lần thử đăng nhập, vui lòng thử lại sau 15 phút.' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: async (req) => {
+    try {
+      // 1. Kiểm tra JWT token (nếu đã đăng nhập và gửi request)
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded && decoded.role === 'admin') {
+          return true;
+        }
+      }
+
+      // 2. Kiểm tra tài khoản đăng nhập xem có phải admin không
+      const identifier = String(req.body?.email || req.body?.username || '').trim();
+      if (identifier) {
+        const User = require('./models/User');
+        const user = await User.findOne({
+          $or: [
+            { email: identifier.toLowerCase() },
+            { username: identifier },
+          ],
+        }).select('role');
+        if (user && user.role === 'admin') {
+          return true; // Không giới hạn đăng nhập đối với tài khoản admin
+        }
+      }
+    } catch (e) {
+      // Bỏ qua lỗi truy vấn DB hoặc giải mã token
+    }
+    return false;
+  },
 });
 
 app.use(generalLimiter);

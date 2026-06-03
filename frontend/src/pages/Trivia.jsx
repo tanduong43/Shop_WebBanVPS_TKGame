@@ -92,6 +92,17 @@ export default function Trivia() {
   const [lastResults, setLastResults] = useState(null);
   const [gameOver, setGameOver] = useState(null);
 
+  const roomRef = useRef(room);
+  const phaseRef = useRef(phase);
+
+  useEffect(() => {
+    roomRef.current = room;
+  }, [room]);
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+
   useEffect(() => {
     if (!isAuthenticated) return;
     triviaAPI.getTopics().then((res) => {
@@ -104,8 +115,33 @@ export default function Trivia() {
   const connectSocket = useCallback(() => {
     if (socketRef.current?.connected) return socketRef.current;
 
-    const socket = socketIO(SOCKET_URL, { auth: { token } });
+    const socket = socketIO(SOCKET_URL, {
+      auth: { token },
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+    });
     socketRef.current = socket;
+
+    socket.on('disconnect', (reason) => {
+      console.warn('⚠️ Trivia socket disconnected:', reason);
+      toast.warning('Mất kết nối game Đố Vui. Đang tự động kết nối lại...', {
+        toastId: 'trivia-disconnect',
+        autoClose: false,
+        closeOnClick: false,
+        draggable: false,
+      });
+    });
+
+    socket.on('reconnect', (attemptNumber) => {
+      console.log('⚡ Trivia socket reconnected after', attemptNumber, 'attempts');
+      toast.dismiss('trivia-disconnect');
+      toast.success('Đã kết nối lại game Đố Vui!', { autoClose: 3000 });
+      if (roomRef.current?.roomCode && phaseRef.current === PHASE.LOBBY) {
+        socket.emit('trivia:join_room', { roomCode: roomRef.current.roomCode });
+      }
+    });
 
     socket.on('trivia:error', ({ message }) => toast.error(message));
 
@@ -424,14 +460,20 @@ export default function Trivia() {
                     <button
                       key={i}
                       type="button"
-                      disabled={selectedAnswer !== null}
+                      disabled={selectedAnswer !== null || lastResults !== null}
                       onClick={() => handleAnswer(i)}
                       className={`p-4 rounded-xl border text-left transition-all ${
-                        selectedAnswer === i
-                          ? 'border-primary-500 bg-primary-500/20 text-white'
-                          : selectedAnswer !== null
-                            ? 'border-white/5 bg-white/2 text-white/30'
-                            : 'border-white/10 bg-white/5 text-white hover:border-primary-500/40 hover:bg-primary-500/10'
+                        lastResults
+                          ? i === lastResults.correctIndex
+                            ? 'border-green-500 bg-green-500/20 text-green-400 font-bold'
+                            : i === selectedAnswer
+                              ? 'border-red-500 bg-red-500/20 text-red-400'
+                              : 'border-white/5 bg-white/2 text-white/30'
+                          : selectedAnswer === i
+                            ? 'border-primary-500 bg-primary-500/20 text-white'
+                            : selectedAnswer !== null
+                              ? 'border-white/5 bg-white/2 text-white/30'
+                              : 'border-white/10 bg-white/5 text-white hover:border-primary-500/40 hover:bg-primary-500/10'
                       }`}
                     >
                       <span className="text-primary-400 font-bold mr-2">{String.fromCharCode(65 + i)}.</span>
@@ -440,7 +482,7 @@ export default function Trivia() {
                   ))}
                 </div>
 
-                {selectedAnswer !== null && (
+                {selectedAnswer !== null && !lastResults && (
                   <p className="text-center text-white/40 text-sm">Đã gửi đáp án — chờ kết quả...</p>
                 )}
               </div>
