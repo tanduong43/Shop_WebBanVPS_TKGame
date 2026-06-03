@@ -484,6 +484,19 @@ async function initGameEngine(ioInstance) {
       socket.leave(`baucua:${roomId}`);
     });
 
+    // Nhận tin nhắn chat và phát cho cả phòng
+    socket.on('baucua:send_chat', ({ roomId, message }) => {
+      if (!message || message.trim() === '') return;
+      const chatMsg = {
+        userId: socket.user._id,
+        username: socket.user.username,
+        role: socket.user.role,
+        message: message.trim(),
+        timestamp: new Date(),
+      };
+      io.to(`baucua:${roomId}`).emit('baucua:chat_message', chatMsg);
+    });
+
     // Admin override kết quả
     if (socket.user.role === 'admin') {
       socket.on('baucua:admin_override', async ({ roomId, result }) => {

@@ -121,9 +121,10 @@ function DicePlateArea({ diceResult, rolling, status, children }) {
 }
 
 // ─── COMPONENT CÁI TÔ ────────────────────────────────────────────────────────
-function BowlOverlay({ status }) {
+function BowlOverlay({ status, waitingEndsAt, rollingEndsAt }) {
   const [isVisible, setIsVisible] = useState(true);
   const [animClass, setAnimClass] = useState('animate-bowl-cover');
+  const [secondsLeft, setSecondsLeft] = useState(0);
 
   useEffect(() => {
     if (status === 'finished') {
@@ -138,6 +139,21 @@ function BowlOverlay({ status }) {
     }
   }, [status]);
 
+  useEffect(() => {
+    if (status === 'waiting' || status === 'rolling') {
+      const targetTime = status === 'waiting' ? waitingEndsAt : rollingEndsAt;
+      if (!targetTime) return;
+
+      const tick = () => {
+        const diff = Math.max(0, Math.ceil((new Date(targetTime) - Date.now()) / 1000));
+        setSecondsLeft(diff);
+      };
+      tick();
+      const interval = setInterval(tick, 500);
+      return () => clearInterval(interval);
+    }
+  }, [status, waitingEndsAt, rollingEndsAt]);
+
   if (!isVisible) return null;
 
   const isShaking = status === 'rolling';
@@ -151,57 +167,48 @@ function BowlOverlay({ status }) {
           <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_50%_30%,rgba(255,230,180,0.2),transparent_60%)]" />
         </div>
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-20 sm:w-24 sm:h-24 bg-amber-950 rounded-full border-4 border-amber-900 scale-y-[0.45] -translate-y-6 sm:-translate-y-7 shadow-lg" />
+        
+        {/* Trạng thái WAITING (Đang đặt cược) */}
+        {status === 'waiting' && secondsLeft > 0 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-white select-none">
+            <span className="text-[10px] sm:text-xs font-bold text-emerald-400 uppercase tracking-widest animate-pulse drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.8)]">
+              Thời gian cược
+            </span>
+            <span className={`text-4xl sm:text-5xl font-black font-mono drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] mt-1 ${secondsLeft <= 5 ? 'text-red-400 animate-bounce' : 'text-white'}`}>
+              {secondsLeft}s
+            </span>
+          </div>
+        )}
+
+        {/* Trạng thái LOCKED (Khóa cược) */}
+        {status === 'locked' && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-white select-none">
+            <span className="text-[11px] sm:text-sm font-bold text-yellow-400 uppercase tracking-widest animate-pulse drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.8)]">
+              Đã khóa cược
+            </span>
+            <span className="text-[10px] sm:text-xs text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] mt-0.5 animate-pulse">
+              Đang chuẩn bị...
+            </span>
+          </div>
+        )}
+
+        {/* Trạng thái ROLLING (Đang lắc) */}
+        {status === 'rolling' && secondsLeft > 0 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-white select-none">
+            <span className="text-[10px] sm:text-xs font-bold text-amber-400/90 uppercase tracking-widest animate-pulse drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.8)]">
+              Đang lắc...
+            </span>
+            <span className="text-4xl sm:text-5xl font-black font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] mt-1">
+              {secondsLeft}s
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// ─── COMPONENT COUNTDOWN ─────────────────────────────────────────────────────
-function CountdownBar({ endsAt, status }) {
-  const [secondsLeft, setSecondsLeft] = useState(0);
-  const totalSeconds = 15;
-
-  useEffect(() => {
-    if (!endsAt || status !== 'waiting') return;
-    const tick = () => {
-      const diff = Math.max(0, Math.ceil((new Date(endsAt) - Date.now()) / 1000));
-      setSecondsLeft(diff);
-    };
-    tick();
-    const t = setInterval(tick, 500);
-    return () => clearInterval(t);
-  }, [endsAt, status]);
-
-  const pct = status === 'waiting' ? (secondsLeft / totalSeconds) * 100 : 0;
-  const urgent = secondsLeft <= 5 && status === 'waiting';
-
-  if (status === 'locked' || status === 'rolling') {
-    return (
-      <div className="flex items-center justify-center gap-2 py-3 text-sm font-bold text-yellow-400">
-        <FiLock className="animate-pulse" />
-        {status === 'locked' ? 'Đã khóa cược – Đang xóc...' : '🎲 Đang lắc...'}
-      </div>
-    );
-  }
-  if (status === 'finished') return null;
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex justify-between items-center text-xs">
-        <span className="text-white/40 flex items-center gap-1"><FiClock /> Thời gian đặt cược</span>
-        <span className={`font-black text-base font-mono ${urgent ? 'text-red-400 animate-pulse' : 'text-white'}`}>
-          {secondsLeft}s
-        </span>
-      </div>
-      <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${urgent ? 'bg-red-500' : 'bg-gradient-to-r from-green-500 to-emerald-400'}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
+// Timings are centralized on the bowl/lid overlay.
 
 // ─── BAUCUA MAIN PAGE ─────────────────────────────────────────────────────────
 export default function BauCua() {
@@ -226,6 +233,72 @@ export default function BauCua() {
 
   // Kết quả popup
   const [resultPopup, setResultPopup] = useState(null); // { result, myProfit, myBets }
+
+  // Chat real-time states
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const chatContainerRef = useRef(null);
+
+  const handleSendChat = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    if (socketRef.current) {
+      socketRef.current.emit('baucua:send_chat', { roomId, message: chatInput });
+      setChatInput('');
+    }
+  };
+
+  // Admin override states
+  const [adminOverrideSelection, setAdminOverrideSelection] = useState([]);
+
+  const handleAdminSelect = (symbolKey) => {
+    if (adminOverrideSelection.length >= 3) {
+      toast.warn('Đã chọn đủ 3 hình. Vui lòng bấm "Xóa" để chọn lại.');
+      return;
+    }
+    setAdminOverrideSelection(prev => [...prev, symbolKey]);
+  };
+
+  const handleAdminClear = () => {
+    setAdminOverrideSelection([]);
+  };
+
+  const handleAdminSubmit = () => {
+    if (adminOverrideSelection.length !== 3) {
+      toast.warn('Vui lòng chọn đúng 3 hình!');
+      return;
+    }
+    if (socketRef.current) {
+      socketRef.current.emit('baucua:admin_override', {
+        roomId,
+        result: adminOverrideSelection,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
+
+  // Đồng bộ myBets từ danh sách cược trong phòng (hỗ trợ lưu vết khi reload trang)
+  useEffect(() => {
+    if (user && roundState?.bets) {
+      const myId = user._id ?? user.id;
+      const myBetsMap = {};
+      roundState.bets.forEach(b => {
+        if (sameUserId(b.userId, myId) && !b.isBot) {
+          myBetsMap[b.symbol] = (myBetsMap[b.symbol] || 0) + b.amount;
+        }
+      });
+      const isDifferent = Object.keys(myBetsMap).length !== Object.keys(myBets).length ||
+        Object.keys(myBetsMap).some(k => myBetsMap[k] !== myBets[k]);
+      if (isDifferent) {
+        setMyBets(myBetsMap);
+      }
+    }
+  }, [user, roundState?.bets]);
 
   const socketRef = useRef(null);
   const userRef = useRef(user);
@@ -261,6 +334,22 @@ export default function BauCua() {
       socket.emit('baucua:join_room', roomId);
     });
 
+    // Nhận tin nhắn chat
+    socket.on('baucua:chat_message', (msg) => {
+      setChatMessages(prev => [...prev, msg].slice(-50));
+    });
+
+    // Admin override success/error events
+    socket.on('baucua:override_success', ({ result }) => {
+      const labels = result.map(k => SYMBOL_MAP[k]?.label || k).join(', ');
+      toast.success(`🎛️ Thiết lập kết quả thành công: ${labels}`);
+      setAdminOverrideSelection([]);
+    });
+
+    socket.on('baucua:error', ({ message }) => {
+      toast.error(`❌ Lỗi từ hệ thống: ${message}`);
+    });
+
     // Trạng thái phòng / ván mới
     socket.on('baucua:room_state', (data) => {
       setRoundState({
@@ -287,9 +376,14 @@ export default function BauCua() {
     });
 
     // Đang lắc
-    socket.on('baucua:rolling', () => {
+    socket.on('baucua:rolling', (data) => {
       setRolling(true);
-      setRoundState(prev => prev ? { ...prev, status: 'rolling' } : prev);
+      const duration = data?.duration || 4000;
+      setRoundState(prev => prev ? {
+        ...prev,
+        status: 'rolling',
+        rollingEndsAt: new Date(Date.now() + duration).toISOString()
+      } : prev);
       if (soundEnabledRef.current) {
         new Audio(shakeSoundPath).play().catch(e => console.warn(e));
       }
@@ -344,6 +438,7 @@ export default function BauCua() {
             roundId: round._id,
             roundNumber: round.roundNumber,
             waitingEndsAt: round.waitingEndsAt,
+            rollingEndsAt: round.rollingEndsAt,
             bets: round.bets || [],
           });
           if (round.status === 'finished') {
@@ -438,13 +533,8 @@ export default function BauCua() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-          {/* CỘT TRÁI: THÔNG TIN VÁN + COUNTDOWN */}
+          {/* CỘT TRÁI: THÔNG TIN VÁN + LỊCH SỬ */}
           <div className="lg:col-span-3 space-y-4">
-
-            {/* Countdown */}
-            <div className="glass-card p-4">
-              <CountdownBar endsAt={roundState?.waitingEndsAt} status={roundState?.status} />
-            </div>
 
             {/* Lịch sử ván */}
             <div className="glass-card p-4 space-y-2">
@@ -452,13 +542,15 @@ export default function BauCua() {
               {history.length === 0 ? (
                 <p className="text-xs text-white/20 text-center py-2">Chưa có kết quả</p>
               ) : (
-                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 scrollbar-thin">
                   {history.slice(0, 10).map(h => (
-                    <div key={h._id} className="flex items-center justify-between text-[10px]">
-                      <span className="text-white/30">#{h.roundNumber}</span>
-                      <div className="flex gap-0.5">
+                    <div key={h._id} className="flex items-center justify-between text-[11px] py-1 border-b border-white/3 last:border-0">
+                      <span className="text-white/40 font-mono font-bold">Ván #{h.roundNumber}</span>
+                      <div className="flex gap-1">
                         {(h.result || []).map((r, i) => (
-                          <span key={i} className="text-base">{SYMBOL_MAP[r]?.emoji || '?'}</span>
+                          <span key={i} className="text-lg filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]">
+                            {SYMBOL_MAP[r]?.emoji || '?'}
+                          </span>
                         ))}
                       </div>
                     </div>
@@ -466,6 +558,64 @@ export default function BauCua() {
                 </div>
               )}
             </div>
+
+            {/* PANEL ADMIN CAN THIỆP KẾT QUẢ */}
+            {user?.role === 'admin' && (
+              <div className="glass-card p-4 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.05)] space-y-3">
+                <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest flex items-center gap-1">
+                  🎛️ Can thiệp kết quả (Admin)
+                </p>
+                <div className="text-[10px] text-white/50 leading-relaxed">
+                  Chọn đúng 3 hình linh vật để đặt trước kết quả cho ván này (trước khi kết thúc thời gian cược).
+                </div>
+                
+                {/* 6 linh vật để chọn */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  {SYMBOLS.map(sym => {
+                    const count = adminOverrideSelection.filter(s => s === sym.key).length;
+                    const isSelected = count > 0;
+                    return (
+                      <button
+                        key={sym.key}
+                        type="button"
+                        onClick={() => handleAdminSelect(sym.key)}
+                        className={`p-2 rounded-lg border flex flex-col items-center justify-center transition-all relative ${
+                          isSelected 
+                            ? 'bg-red-500/10 border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.3)] scale-105 animate-pulse' 
+                            : 'bg-white/3 border-white/5 hover:bg-white/5 text-white/70'
+                        }`}
+                      >
+                        {count > 0 && (
+                          <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
+                            x{count}
+                          </div>
+                        )}
+                        <span className="text-xl">{sym.emoji}</span>
+                        <span className="text-[9px] font-medium mt-0.5">{sym.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleAdminClear}
+                    className="flex-1 py-1.5 rounded-lg bg-white/5 border border-white/8 hover:bg-white/10 text-white/70 text-[10px] font-bold transition-all"
+                  >
+                    Xóa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAdminSubmit}
+                    disabled={adminOverrideSelection.length !== 3}
+                    className="flex-1 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 disabled:opacity-30 disabled:hover:bg-red-500 text-white text-[10px] font-bold transition-all shadow-[0_0_10px_rgba(239,68,68,0.2)]"
+                  >
+                    Áp dụng
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* CỘT GIỮA: ĐĨA XÓC + BÀN CƯỢC */}
@@ -478,7 +628,13 @@ export default function BauCua() {
                 rolling={rolling}
                 status={roundState?.status}
               >
-                {roundState && <BowlOverlay status={roundState.status} />}
+                {roundState && (
+                  <BowlOverlay 
+                    status={roundState.status} 
+                    waitingEndsAt={roundState.waitingEndsAt}
+                    rollingEndsAt={roundState.rollingEndsAt} 
+                  />
+                )}
               </DicePlateArea>
 
               {resultPopup && !rolling && (
@@ -533,6 +689,9 @@ export default function BauCua() {
                   const appearances = symResult ? diceResult.filter(r => r === sym.key).length : 0;
                   const isWinner = symResult && appearances > 0;
                   const myBetAmt = myBets[sym.key] || 0;
+                  const totalBetAmt = (roundState?.bets || [])
+                    .filter(b => b.symbol === sym.key)
+                    .reduce((sum, b) => sum + b.amount, 0);
                   const canBet = roundState?.status === 'waiting' && isAuthenticated;
 
                   // CSS dynamic classes for high fidelity display
@@ -568,6 +727,11 @@ export default function BauCua() {
                       )}
                       <span className="text-3xl">{sym.emoji}</span>
                       <span className="text-[11px] font-bold text-white">{sym.label}</span>
+                      {totalBetAmt > 0 && (
+                        <span className="text-[9px] text-white/50">
+                          Tổng: {totalBetAmt.toLocaleString()}đ
+                        </span>
+                      )}
                       {myBetAmt > 0 && (
                         <span className="text-[9px] font-bold text-amber-400">
                           Của tôi: {myBetAmt.toLocaleString()}đ
@@ -585,13 +749,14 @@ export default function BauCua() {
             </div>
           </div>
 
-          {/* CỘT PHẢI: DANH SÁCH CƯỢC */}
+          {/* CỘT PHẢI: DANH SÁCH CƯỢC + CHAT */}
           <div className="lg:col-span-3 space-y-4">
+            {/* Lệnh cược */}
             <div className="glass-card p-4">
               <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-3 flex items-center gap-1">
                 <FiZap /> Lệnh cược ván này
               </p>
-              <div className="space-y-2 max-h-[500px] overflow-y-auto">
+              <div className="space-y-2 max-h-[220px] overflow-y-auto">
                 {(roundState?.bets || []).length === 0 ? (
                   <p className="text-[10px] text-white/20 text-center py-4">Chưa có lệnh cược</p>
                 ) : (
@@ -621,6 +786,64 @@ export default function BauCua() {
                   })
                 )}
               </div>
+            </div>
+
+            {/* Box Chat Real-time */}
+            <div className="glass-card p-4 flex flex-col h-[280px]">
+              <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-3 flex items-center gap-1">
+                💬 Trò chuyện trực tuyến
+              </p>
+              
+              {/* Tin nhắn */}
+              <div 
+                ref={chatContainerRef}
+                className="flex-1 overflow-y-auto space-y-2 mb-3 pr-1 text-[11px] scroll-smooth"
+              >
+                {chatMessages.length === 0 ? (
+                  <p className="text-white/20 text-center py-12">Chưa có tin nhắn nào. Hãy gửi lời chào!</p>
+                ) : (
+                  chatMessages.map((msg, i) => {
+                    const isMe = sameUserId(msg.userId, user?._id ?? user?.id);
+                    const isAdmin = msg.role === 'admin';
+                    const timeStr = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                    
+                    return (
+                      <div key={i} className="break-words">
+                        <span className="text-[9px] text-white/20 mr-1.5">{timeStr}</span>
+                        <span className={`font-bold mr-1.5 ${
+                          isAdmin 
+                            ? 'text-red-400 bg-red-500/10 px-1 py-0.5 rounded border border-red-500/20 text-[9px]' 
+                            : isMe 
+                              ? 'text-amber-400' 
+                              : 'text-sky-400'
+                        }`}>
+                          {isAdmin && '👑 '}{msg.username}
+                        </span>
+                        <span className="text-white/80">{msg.message}</span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Nhập chat */}
+              <form onSubmit={handleSendChat} className="flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  placeholder={isAuthenticated ? "Nhập tin nhắn..." : "Đăng nhập để chat"}
+                  disabled={!isAuthenticated}
+                  className="input-field text-[11px] py-1.5 px-3 flex-1 bg-white/3 border-white/5 focus:border-amber-500/30"
+                />
+                <button
+                  type="submit"
+                  disabled={!isAuthenticated || !chatInput.trim()}
+                  className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:hover:bg-amber-500 text-black text-[10px] font-bold transition-all"
+                >
+                  Gửi
+                </button>
+              </form>
             </div>
           </div>
 
