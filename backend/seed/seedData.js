@@ -15,15 +15,15 @@ const seedUsers = [
     role: 'admin',
   },
   {
-    username: 'test@123',
+    username: 'test1234',
     email: 'testuser@example.com',
-    password: 'Test@123',
+    password: 'Duong@43',
     role: 'user',
   },
   {
-    username: 'gamer_pro',
+    username: 'test123',
     email: 'gamerpro@example.com',
-    password: 'Gamer@123',
+    password: 'Duong@43',
     role: 'user',
   },
   {

@@ -1,5 +1,5 @@
 // seed/seedTrivia.js - Seed đề tài & câu hỏi mẫu cho Đố Vui Sinh Tồn
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const mongoose = require('mongoose');
 const connectDB = require('../config/db');
 const Topic = require('../models/Topic');

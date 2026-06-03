@@ -1,16 +1,14 @@
 // seed/seedWheels.js - Script seed dữ liệu Vòng quay & Phần thưởng mẫu
-require('dotenv').config({ path: '../.env' }); // Đọc .env từ thư mục gốc backend
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') }); // Đọc .env từ thư mục gốc backend
 const mongoose = require('mongoose');
+const connectDB = require('../config/db');
 const SpinWheel = require('../models/SpinWheel');
 const Prize = require('../models/Prize');
-
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/webshopac';
 
 const seedWheelsData = async () => {
   try {
     console.log('🔄 Đang kết nối tới database để seed...');
-    await mongoose.connect(MONGODB_URI);
-    console.log('✅ Kết nối database thành công!');
+    await connectDB();
 
     // 1. Dọn dẹp dữ liệu cũ
     console.log('🧹 Đang dọn dẹp dữ liệu Vòng Quay & Phần Thưởng cũ...');
@@ -173,11 +171,12 @@ const seedWheelsData = async () => {
     console.log('\n✅ SEED DỮ LIỆU VÒNG QUAY VÀ PHẦN THƯỞNG HOÀN TẤT THÀNH CÔNG! 🎉');
     console.log(`- Đã tạo: 2 Vòng quay mẫu`);
     console.log(`- Đã tạo: 12 Phần quà mẫu chia đều tương ứng`);
-  } catch (error) {
-    console.error('❌ Lỗi chạy script seed:', error.message);
-  } finally {
     await mongoose.disconnect();
     console.log('🔌 Đã ngắt kết nối database.');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Lỗi chạy script seed:', error.message);
+    process.exit(1);
   }
 };
 
