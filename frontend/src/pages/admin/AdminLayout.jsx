@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   FiGrid, FiPackage, FiShoppingBag, FiUsers, FiLogOut,
   FiMenu, FiChevronRight, FiHome, FiDollarSign,
-  FiCompass, FiAward, FiBookOpen,
+  FiCompass, FiAward, FiBookOpen, FiActivity,
 } from 'react-icons/fi';
 import logo from '../../assets/logo.png';
 
@@ -18,6 +18,7 @@ const navItems = [
   { to: '/admin/spins', label: 'Lịch Sử Quay', icon: FiAward },
   { to: '/admin/questions', label: 'Đố Vui Sinh Tồn', icon: FiBookOpen },
   { to: '/admin/users', label: 'Người Dùng', icon: FiUsers },
+  { to: '/admin/logs', label: 'Nhật Ký Admin', icon: FiActivity },
 ];
 
 const AdminLayout = () => {

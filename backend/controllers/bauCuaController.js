@@ -2,8 +2,9 @@
 const BauCuaRoom = require('../models/BauCuaRoom');
 const BauCuaRound = require('../models/BauCuaRound');
 const User = require('../models/User');
+const Transaction = require('../models/Transaction');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
-const { BAUCUA_STATUS, BAUCUA_SYMBOLS, BAUCUA_LIMITS } = require('../config/constants');
+const { BAUCUA_STATUS, BAUCUA_SYMBOLS, BAUCUA_LIMITS, TRANSACTION_TYPES } = require('../config/constants');
 const { getIO, emitToUser } = require('../config/socket');
 
 /**
@@ -88,6 +89,21 @@ const placeBet = async (req, res, next) => {
       { new: true }
     );
     if (!updatedUser) return errorResponse(res, 'Số dư không đủ (có thể đã cược trước đó)', 400);
+
+    // Ghi nhận nhật ký biến động số dư (Transaction)
+    try {
+      const transaction = new Transaction({
+        userId,
+        type: TRANSACTION_TYPES.BAUCUA_BET,
+        amount: -amt,
+        balanceBefore: updatedUser.balance + amt,
+        balanceAfter: updatedUser.balance,
+        description: `Đặt cược Bầu Cua: ô [${symbol.toUpperCase()}] cược ${amt.toLocaleString()}đ`,
+      });
+      await transaction.save();
+    } catch (txErr) {
+      console.error(`⚠️ BauCua bet tx log failed (user ${userId}):`, txErr.message);
+    }
 
     // Lưu lệnh cược
     const bet = {

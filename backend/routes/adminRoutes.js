@@ -1,7 +1,7 @@
 // routes/adminRoutes.js - Admin dashboard routes
 const express = require('express');
 const router = express.Router();
-const { getDashboard, getUsers, deleteUser, restoreUser, getSettings, updateSetting } = require('../controllers/adminController');
+const { getDashboard, getUsers, deleteUser, restoreUser, getSettings, updateSetting, getAdminLogs } = require('../controllers/adminController');
 const { 
   getAllDeposits, 
   confirmDeposit, 
@@ -15,6 +15,9 @@ const { mongoIdParam } = require('../middlewares/validate');
 
 // Tất cả admin routes đều cần auth + admin role
 router.use(authMiddleware, requireAdmin);
+
+// GET /api/admin/logs - Xem lịch sử hoạt động Admin (Audit Trail)
+router.get('/logs', getAdminLogs);
 
 // GET /api/admin/dashboard - Thống kê tổng quan
 router.get('/dashboard', getDashboard);

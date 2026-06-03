@@ -4,6 +4,7 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
 const { ORDER_STATUS } = require('../config/constants');
+const { logAdminAction } = require('../utils/auditLogger');
 
 /**
  * GET /api/admin/dashboard
@@ -143,6 +144,9 @@ const deleteUser = async (req, res, next) => {
     user.isActive = false;
     await user.save();
 
+    // Ghi nhật ký hoạt động
+    await logAdminAction(req.user._id, 'DEACTIVATE_USER', `Khóa tài khoản người dùng "${user.username}" (ID: ${user._id})`);
+
     return successResponse(res, null, 'Vô hiệu hóa tài khoản thành công');
   } catch (error) {
     next(error);
@@ -151,6 +155,7 @@ const deleteUser = async (req, res, next) => {
 
 const Transaction = require('../models/Transaction');
 const SystemSetting = require('../models/SystemSetting');
+const AdminLog = require('../models/AdminLog');
 
 /**
  * PUT /api/admin/users/:id/restore
@@ -158,12 +163,15 @@ const SystemSetting = require('../models/SystemSetting');
  */
 const restoreUser = async (req, res, next) => {
   try {
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { isActive: true },
-      { new: true }
-    );
+    const user = await User.findById(req.params.id);
     if (!user) return errorResponse(res, 'Không tìm thấy user', 404);
+
+    user.isActive = true;
+    await user.save();
+
+    // Ghi nhật ký hoạt động
+    await logAdminAction(req.user._id, 'ACTIVATE_USER', `Mở khóa tài khoản người dùng "${user.username}" (ID: ${user._id})`);
+
     return successResponse(res, user, 'Khôi phục tài khoản thành công');
   } catch (error) {
     next(error);
@@ -207,6 +215,8 @@ const updateSetting = async (req, res, next) => {
     }
 
     let setting = await SystemSetting.findOne({ key });
+    const oldValue = setting ? String(setting.value) : 'chưa cấu hình';
+    
     if (!setting) {
       setting = new SystemSetting({ key, value });
     } else {
@@ -214,10 +224,76 @@ const updateSetting = async (req, res, next) => {
     }
     await setting.save();
 
+    // Ghi nhật ký hoạt động
+    await logAdminAction(
+      req.user._id,
+      'UPDATE_SETTING',
+      `Thay đổi cấu hình "${key}": Từ [${oldValue}] thành [${value}]`
+    );
+
     return successResponse(res, setting, 'Cập nhật cấu hình thành công');
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = { getDashboard, getUsers, deleteUser, restoreUser, getSettings, updateSetting };
+/**
+ * GET /api/admin/logs
+ * Lấy lịch sử nhật ký hoạt động của hệ thống (Audit Trail)
+ */
+const getAdminLogs = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, search } = req.query;
+    const pageNum = Math.max(1, parseInt(page, 10));
+    const limitNum = Math.min(parseInt(limit, 10), 100);
+    const skip = (pageNum - 1) * limitNum;
+
+    const query = {};
+    if (search) {
+      // Tìm ID của admin theo tên
+      const matchedAdmins = await User.find({
+        username: { $regex: search, $options: 'i' }
+      }).select('_id');
+      const adminIds = matchedAdmins.map(a => a._id);
+
+      query.$or = [
+        { adminId: { $in: adminIds } },
+        { action: { $regex: search, $options: 'i' } },
+        { details: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const [logs, total] = await Promise.all([
+      AdminLog.find(query)
+        .populate('adminId', 'username email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      AdminLog.countDocuments(query)
+    ]);
+
+    return res.json({
+      success: true,
+      data: logs,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getDashboard,
+  getUsers,
+  deleteUser,
+  restoreUser,
+  getSettings,
+  updateSetting,
+  getAdminLogs
+};

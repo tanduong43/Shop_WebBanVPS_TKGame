@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import {
   FiSettings, FiPlusCircle, FiEdit2, FiTrash2, FiInfo,
   FiAward, FiDollarSign, FiPercent, FiLayers, FiCheck, FiAlertTriangle,
-  FiPlay, FiPause, FiGrid,
+  FiPlay, FiPause, FiGrid, FiTrendingUp, FiSearch,
 } from 'react-icons/fi';
 
 // ─── BầU CUA ROOM MANAGEMENT PANEL ────────────────────────────────────────────
@@ -14,6 +14,66 @@ function BauCuaRoomsPanel() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ id: '', name: '', description: '', minBet: 1000, maxBet: 500000 });
+
+  // Thống kê phòng
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [selectedRoomForStats, setSelectedRoomForStats] = useState(null);
+  const [statsData, setStatsData] = useState([]);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsSearch, setStatsSearch] = useState('');
+  const [statsSort, setStatsSort] = useState('profit_desc');
+  const [statsPage, setStatsPage] = useState(1);
+  const [statsTotalPages, setStatsTotalPages] = useState(1);
+  const [statsTotal, setStatsTotal] = useState(0);
+
+  const fetchRoomStats = async (room, page = 1, search = '', sortBy = 'profit_desc') => {
+    if (!room) return;
+    setStatsLoading(true);
+    try {
+      const res = await adminBauCuaAPI.getRoomStats(room._id, {
+        page,
+        limit: 10,
+        search,
+        sortBy
+      });
+      setStatsData(res.data.data);
+      setStatsTotal(res.data.pagination.total);
+      setStatsTotalPages(res.data.pagination.totalPages);
+    } catch {
+      toast.error('Không thể tải thống kê của phòng này');
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  const openStatsModal = (room) => {
+    setSelectedRoomForStats(room);
+    setStatsSearch('');
+    setStatsSort('profit_desc');
+    setStatsPage(1);
+    setShowStatsModal(true);
+    fetchRoomStats(room, 1, '', 'profit_desc');
+  };
+
+  const handleStatsSearchChange = (e) => {
+    const val = e.target.value;
+    setStatsSearch(val);
+    setStatsPage(1);
+    fetchRoomStats(selectedRoomForStats, 1, val, statsSort);
+  };
+
+  const handleStatsSortChange = (e) => {
+    const val = e.target.value;
+    setStatsSort(val);
+    setStatsPage(1);
+    fetchRoomStats(selectedRoomForStats, 1, statsSearch, val);
+  };
+
+  const handleStatsPageChange = (newPage) => {
+    if (newPage < 1 || newPage > statsTotalPages) return;
+    setStatsPage(newPage);
+    fetchRoomStats(selectedRoomForStats, newPage, statsSearch, statsSort);
+  };
 
   const fetchRooms = async () => {
     setLoading(true);
@@ -133,23 +193,32 @@ function BauCuaRoomsPanel() {
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-1 border-t border-white/5">
+              <div className="flex flex-col gap-2 pt-1 border-t border-white/5">
                 <button
-                  onClick={() => handleToggle(room)}
-                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-all ${
-                    room.isActive
-                      ? 'bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white'
-                      : 'bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500 hover:text-white'
-                  }`}
+                  onClick={() => openStatsModal(room)}
+                  className="w-full py-1.5 rounded-lg bg-primary-500/10 border border-primary-500/20 text-primary-400 hover:bg-primary-500 hover:text-white text-[10px] font-bold flex items-center justify-center gap-1 transition-all"
+                  title="Xem thống kê thắng thua"
                 >
-                  {room.isActive ? <><FiPause /> Dừng</> : <><FiPlay /> Chạy</>}
+                  <FiTrendingUp className="text-xs" /> Xem Thống Kê Thắng/Thua
                 </button>
-                <button onClick={() => openModal(room)} className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-white/60 hover:text-white">
-                  <FiEdit2 className="text-xs" />
-                </button>
-                <button onClick={() => handleDelete(room._id, room.name)} className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white">
-                  <FiTrash2 className="text-xs" />
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleToggle(room)}
+                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-all ${
+                      room.isActive
+                        ? 'bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white'
+                        : 'bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500 hover:text-white'
+                    }`}
+                  >
+                    {room.isActive ? <><FiPause /> Dừng</> : <><FiPlay /> Chạy</>}
+                  </button>
+                  <button onClick={() => openModal(room)} className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-white/60 hover:text-white" title="Sửa">
+                    <FiEdit2 className="text-xs" />
+                  </button>
+                  <button onClick={() => handleDelete(room._id, room.name)} className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white" title="Xóa">
+                    <FiTrash2 className="text-xs" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -202,6 +271,152 @@ function BauCuaRoomsPanel() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL THỐNG KÊ PHÒNG BẦU CUA */}
+      {showStatsModal && selectedRoomForStats && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowStatsModal(false)} />
+          <div className="relative glass-card p-6 w-full max-w-4xl animate-scale-in max-h-[90vh] flex flex-col">
+            
+            {/* Header */}
+            <div className="flex justify-between items-center pb-4 border-b border-white/5">
+              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <FiTrendingUp className="text-amber-400 text-lg" />
+                Thống Kê Thắng/Thua — {selectedRoomForStats.name}
+              </h2>
+              <button
+                onClick={() => setShowStatsModal(false)}
+                className="text-white/40 hover:text-white text-xs font-bold bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-all"
+              >
+                Đóng
+              </button>
+            </div>
+
+            {/* Filter bar */}
+            <div className="flex flex-col sm:flex-row gap-3 py-4">
+              <div className="relative flex-1">
+                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm username hoặc email..."
+                  value={statsSearch}
+                  onChange={handleStatsSearchChange}
+                  className="input-field pl-9 pr-4 py-2 text-xs w-full"
+                />
+              </div>
+              <div className="w-full sm:w-48">
+                <select
+                  value={statsSort}
+                  onChange={handleStatsSortChange}
+                  className="input-field py-2 text-xs w-full bg-dark-900 border-white/10 text-white"
+                >
+                  <option value="profit_desc">Thắng nhiều nhất</option>
+                  <option value="profit_asc">Thua nhiều nhất</option>
+                  <option value="bet_desc">Cược nhiều nhất</option>
+                  <option value="win_desc">Thắng nhiều nhất (giao dịch)</option>
+                  <option value="rounds_desc">Chơi nhiều ván nhất</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Table Area */}
+            <div className="flex-1 overflow-y-auto min-h-[300px]">
+              {statsLoading ? (
+                <div className="flex flex-col items-center justify-center py-20 text-white/40 text-xs gap-3">
+                  <div className="w-8 h-8 rounded-full border-2 border-primary-500 border-t-transparent animate-spin" />
+                  Đang tải dữ liệu...
+                </div>
+              ) : statsData.length === 0 ? (
+                <div className="flex items-center justify-center py-20 text-white/30 text-xs">
+                  Không tìm thấy dữ liệu thống kê nào.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="text-white/40 border-b border-white/5 uppercase tracking-wider font-bold">
+                        <th className="py-3 px-3">Người chơi</th>
+                        <th className="py-3 px-3 text-center">Số ván chơi</th>
+                        <th className="py-3 px-3 text-right">Tổng cược</th>
+                        <th className="py-3 px-3 text-right">Tổng thắng</th>
+                        <th className="py-3 px-3 text-right">Lợi nhuận ròng</th>
+                        <th className="py-3 px-3 text-center">Kết quả</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {statsData.map((row) => {
+                        const isWinner = row.netProfit > 0;
+                        const isLoser = row.netProfit < 0;
+                        return (
+                          <tr key={row.userId} className="text-white/70 hover:bg-white/5 transition-colors">
+                            <td className="py-3 px-3">
+                              <p className="font-bold text-white text-xs">{row.username}</p>
+                              <p className="text-[10px] text-white/30 font-mono">{row.email}</p>
+                            </td>
+                            <td className="py-3 px-3 text-center font-bold text-white/80">
+                              {row.roundsPlayed}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono font-semibold text-white/80">
+                              {row.totalBet.toLocaleString()}đ
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono font-semibold text-white/80">
+                              {row.totalWin.toLocaleString()}đ
+                            </td>
+                            <td className={`py-3 px-3 text-right font-mono font-black ${
+                              isWinner ? 'text-green-400' : isLoser ? 'text-red-400' : 'text-white/40'
+                            }`}>
+                              {isWinner ? '+' : ''}{row.netProfit.toLocaleString()}đ
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase ${
+                                isWinner 
+                                  ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+                                  : isLoser 
+                                    ? 'bg-red-500/10 text-red-400 border border-red-500/20' 
+                                    : 'bg-white/5 text-white/30'
+                              }`}>
+                                {isWinner ? 'Thắng (Ăn)' : isLoser ? 'Thua' : 'Hòa'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Pagination footer */}
+            {!statsLoading && statsTotalPages > 1 && (
+              <div className="flex items-center justify-between pt-4 border-t border-white/5 mt-4">
+                <span className="text-[10px] text-white/40">
+                  Tổng cộng: <strong className="text-white/70">{statsTotal}</strong> người chơi
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    disabled={statsPage === 1}
+                    onClick={() => handleStatsPageChange(statsPage - 1)}
+                    className="px-3 py-1.5 rounded-xl text-[10px] font-bold bg-white/5 text-white/60 hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-white/5 transition-all"
+                  >
+                    Trang trước
+                  </button>
+                  <span className="text-[10px] text-white/60 bg-white/5 px-3 py-1.5 rounded-xl flex items-center">
+                    Trang {statsPage} / {statsTotalPages}
+                  </span>
+                  <button
+                    disabled={statsPage === statsTotalPages}
+                    onClick={() => handleStatsPageChange(statsPage + 1)}
+                    className="px-3 py-1.5 rounded-xl text-[10px] font-bold bg-white/5 text-white/60 hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-white/5 transition-all"
+                  >
+                    Trang sau
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

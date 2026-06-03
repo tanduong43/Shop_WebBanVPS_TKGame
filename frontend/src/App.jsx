@@ -31,6 +31,7 @@ import AdminWheels from './pages/admin/AdminWheels'; // Thêm AdminWheels
 import AdminSpinHistory from './pages/admin/AdminSpinHistory'; // Thêm AdminSpinHistory
 import AdminQuestions from './pages/admin/AdminQuestions';
 import AdminUsers from './pages/admin/Users';
+import AdminLogs from './pages/admin/AdminLogs';
 
 const PublicLayout = () => (
   <div className="min-h-screen flex flex-col">
@@ -183,6 +184,7 @@ export default function App() {
           <Route path="spins" element={<AdminSpinHistory />} />
           <Route path="questions" element={<AdminQuestions />} />
           <Route path="users" element={<AdminUsers />} />
+          <Route path="logs" element={<AdminLogs />} />
         </Route>
 
         {/* Fallback */}

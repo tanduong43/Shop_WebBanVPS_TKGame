@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getAllRooms, createRoom, updateRoom, toggleRoom, deleteRoom, getRoomHistory, getStats
+  getAllRooms, createRoom, updateRoom, toggleRoom, deleteRoom, getRoomHistory, getStats, getRoomStats
 } = require('../controllers/adminBauCuaController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { requireAdmin } = require('../middlewares/roleMiddleware');
@@ -18,5 +18,6 @@ router.put('/rooms/:id', mongoIdParam('id'), updateRoom);
 router.put('/rooms/:id/toggle', mongoIdParam('id'), toggleRoom);
 router.delete('/rooms/:id', mongoIdParam('id'), deleteRoom);
 router.get('/rooms/:id/history', mongoIdParam('id'), getRoomHistory);
+router.get('/rooms/:id/stats', mongoIdParam('id'), getRoomStats);
 
 module.exports = router;

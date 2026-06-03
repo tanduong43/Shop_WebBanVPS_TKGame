@@ -1,12 +1,19 @@
 // middlewares/errorHandler.js - Global error handler
 const { errorResponse } = require('../utils/apiResponse');
+const logger = require('../utils/logger');
 
 /**
  * Global error handling middleware
  * Phải đặt sau tất cả routes trong server.js: app.use(errorHandler)
  */
 const errorHandler = (err, req, res, next) => {
-  console.error('❌ Error:', err.stack || err.message);
+  // Ghi nhận lỗi chi tiết kèm meta
+  const meta = {
+    method: req.method,
+    url: req.originalUrl,
+    ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+  };
+  logger.error(err.stack || err.message, meta);
 
   // Mongoose Validation Error
   if (err.name === 'ValidationError') {

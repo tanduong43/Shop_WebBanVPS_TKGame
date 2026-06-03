@@ -6,6 +6,7 @@ const { DEPOSIT_STATUS, TRANSACTION_TYPES } = require('../config/constants');
 const { processSuccessfulDeposit } = require('./webhookController');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
 const { emitToUser } = require('../config/socket');
+const { logAdminAction } = require('../utils/auditLogger');
 
 /**
  * GET /api/admin/deposits
@@ -94,6 +95,13 @@ const confirmDeposit = async (req, res, next) => {
       `MANUAL_ADMIN_${req.user.username.toUpperCase()}`
     );
 
+    // Ghi nhật ký hoạt động
+    await logAdminAction(
+      req.user._id,
+      'CONFIRM_DEPOSIT',
+      `Duyệt thủ công đơn nạp #${deposit.orderCode} (Số tiền: ${deposit.amount.toLocaleString()} VNĐ)`
+    );
+
     return successResponse(res, result.deposit, 'Duyệt nạp tiền thành công');
   } catch (error) {
     next(error);
@@ -121,6 +129,13 @@ const rejectDeposit = async (req, res, next) => {
     deposit.status = DEPOSIT_STATUS.CANCELLED;
     deposit.note = `Admin từ chối duyệt. Lý do: ${reason}`;
     await deposit.save();
+
+    // Ghi nhật ký hoạt động
+    await logAdminAction(
+      req.user._id,
+      'REJECT_DEPOSIT',
+      `Từ chối đơn nạp #${deposit.orderCode} (Số tiền: ${deposit.amount.toLocaleString()} VNĐ). Lý do: ${reason}`
+    );
 
     // Báo realtime trạng thái hủy cho client
     emitToUser(deposit.userId, 'deposit:cancelled', {
@@ -173,6 +188,13 @@ const adjustUserBalance = async (req, res, next) => {
       description: `${description} (Thực hiện bởi Admin: ${req.user.username})`,
     });
     await transaction.save();
+
+    // Ghi nhật ký hoạt động
+    await logAdminAction(
+      req.user._id,
+      'ADJUST_BALANCE',
+      `Điều chỉnh ví user "${user.username}" (ID: ${user._id}): ${amount > 0 ? '+' : ''}${amount.toLocaleString()} VNĐ (Số dư: ${balanceBefore.toLocaleString()}đ -> ${balanceAfter.toLocaleString()}đ). Lý do: ${description}`
+    );
 
     // Bắn realtime
     emitToUser(user._id, 'balance:updated', {

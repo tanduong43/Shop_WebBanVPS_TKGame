@@ -8,10 +8,6 @@ import { bauCuaAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { FiArrowLeft, FiClock, FiZap, FiLock, FiAlertTriangle, FiVolume2, FiVolumeX } from 'react-icons/fi';
 
-import shakeSoundPath from '../assets/audio/shake.mp3';
-import winSoundPath from '../assets/audio/win.mp3';
-import betSoundPath from '../assets/audio/bet.mp3';
-
 // Socket URL: ưu tiên VITE_SOCKET_URL, fallback lấy từ VITE_API_URL (bỏ /api), cuối cùng dùng localhost
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL
   || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') : null)
@@ -227,6 +223,48 @@ export default function BauCua() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const soundEnabledRef = useRef(soundEnabled);
 
+  const shakeAudioRef = useRef(new Audio('/audio/shake.mp3'));
+  const winAudioRef = useRef(new Audio('/audio/win.mp3'));
+  const betAudioRef = useRef(new Audio('/audio/bet.mp3'));
+
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    const unlockAudio = () => {
+      // Play a short silence to unlock audio context
+      shakeAudioRef.current.play().then(() => {
+        shakeAudioRef.current.pause();
+        shakeAudioRef.current.currentTime = 0;
+      }).catch(() => {});
+
+      winAudioRef.current.play().then(() => {
+        winAudioRef.current.pause();
+        winAudioRef.current.currentTime = 0;
+      }).catch(() => {});
+
+      betAudioRef.current.play().then(() => {
+        betAudioRef.current.pause();
+        betAudioRef.current.currentTime = 0;
+      }).catch(() => {});
+
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('touchstart', unlockAudio);
+    };
+
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
+
+    return () => {
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('touchstart', unlockAudio);
+    };
+  }, []);
+
+  // Admin selected mode override state
+  const [currentAdminMode, setCurrentAdminMode] = useState('auto');
+
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
@@ -272,6 +310,15 @@ export default function BauCua() {
       socketRef.current.emit('baucua:admin_override', {
         roomId,
         result: adminOverrideSelection,
+      });
+    }
+  };
+
+  const handleAdminModeSubmit = (mode) => {
+    if (socketRef.current) {
+      socketRef.current.emit('baucua:admin_mode_override', {
+        roomId,
+        mode,
       });
     }
   };
@@ -369,6 +416,17 @@ export default function BauCua() {
       setAdminOverrideSelection([]);
     });
 
+    socket.on('baucua:mode_override_success', ({ mode }) => {
+      const modeLabels = {
+        auto: 'Tự động (Hybrid)',
+        pure_random: 'Ngẫu nhiên (Mode 1)',
+        save_user: 'Cứu user (Mode 2)',
+        sweep_216: 'Quét 216 (Mode 3)',
+      };
+      toast.success(`⚙️ Thiết lập chế độ thành công: ${modeLabels[mode] || mode}`);
+      setCurrentAdminMode(mode);
+    });
+
     socket.on('baucua:error', ({ message }) => {
       toast.error(`❌ Lỗi từ hệ thống: ${message}`);
     });
@@ -386,6 +444,7 @@ export default function BauCua() {
       setRolling(false);
       setMyBets({});
       setResultPopup(null);
+      setCurrentAdminMode('auto');
     });
 
     // Ai đó đặt cược
@@ -408,7 +467,8 @@ export default function BauCua() {
         rollingEndsAt: new Date(Date.now() + duration).toISOString()
       } : prev);
       if (soundEnabledRef.current) {
-        new Audio(shakeSoundPath).play().catch(e => console.warn(e));
+        shakeAudioRef.current.currentTime = 0;
+        shakeAudioRef.current.play().catch(e => console.warn(e));
       }
     });
 
@@ -427,7 +487,8 @@ export default function BauCua() {
         if (myBetsList.length > 0 && totalProfit > 0) {
           setResultPopup({ result: data.result, myProfit: totalProfit, myBets: myBetsList });
           if (soundEnabledRef.current) {
-            new Audio(winSoundPath).play().catch(e => console.warn(e));
+            winAudioRef.current.currentTime = 0;
+            winAudioRef.current.play().catch(e => console.warn(e));
           }
           toast.success(`🎉 Thắng +${totalProfit.toLocaleString()}đ (nhận ${totalPayout.toLocaleString()}đ)!`, { autoClose: 4000 });
           confetti({ particleCount: 100, spread: 70, origin: { y: 0.5 } });
@@ -466,6 +527,8 @@ export default function BauCua() {
           });
           if (round.status === 'finished') {
             setDiceResult(round.result || [null, null, null]);
+          } else {
+            setCurrentAdminMode(round.adminModeOverride || 'auto');
           }
         }
       } catch {
@@ -489,7 +552,8 @@ export default function BauCua() {
     try {
       await bauCuaAPI.placeBet(roomId, { symbol: symbolKey, amount: betAmount });
       if (soundEnabled) {
-        new Audio(betSoundPath).play().catch(e => console.warn(e));
+        betAudioRef.current.currentTime = 0;
+        betAudioRef.current.play().catch(e => console.warn(e));
       }
       setMyBets(prev => ({ ...prev, [symbolKey]: (prev[symbolKey] || 0) + betAmount }));
     } catch (err) {
@@ -584,58 +648,117 @@ export default function BauCua() {
 
             {/* PANEL ADMIN CAN THIỆP KẾT QUẢ */}
             {user?.role === 'admin' && (
-              <div className="glass-card p-4 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.05)] space-y-3">
-                <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest flex items-center gap-1">
-                  🎛️ Can thiệp kết quả (Admin)
-                </p>
-                <div className="text-[10px] text-white/50 leading-relaxed">
-                  Chọn đúng 3 hình linh vật để đặt trước kết quả cho ván này (trước khi kết thúc thời gian cược).
-                </div>
-                
-                {/* 6 linh vật để chọn */}
-                <div className="grid grid-cols-3 gap-1.5">
-                  {SYMBOLS.map(sym => {
-                    const count = adminOverrideSelection.filter(s => s === sym.key).length;
-                    const isSelected = count > 0;
-                    return (
-                      <button
-                        key={sym.key}
-                        type="button"
-                        onClick={() => handleAdminSelect(sym.key)}
-                        className={`p-2 rounded-lg border flex flex-col items-center justify-center transition-all relative ${
-                          isSelected 
-                            ? 'bg-red-500/10 border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.3)] scale-105 animate-pulse' 
-                            : 'bg-white/3 border-white/5 hover:bg-white/5 text-white/70'
-                        }`}
-                      >
-                        {count > 0 && (
-                          <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
-                            x{count}
-                          </div>
-                        )}
-                        <span className="text-xl">{sym.emoji}</span>
-                        <span className="text-[9px] font-medium mt-0.5">{sym.label}</span>
-                      </button>
-                    );
-                  })}
+              <div className="glass-card p-4 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.05)] space-y-4">
+                <div className="space-y-3">
+                  <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest flex items-center gap-1">
+                    🎛️ Can thiệp kết quả (Admin)
+                  </p>
+                  <div className="text-[10px] text-white/50 leading-relaxed">
+                    Chọn đúng 3 hình linh vật để đặt trước kết quả cho ván này (trước khi kết thúc thời gian cược).
+                  </div>
+                  
+                  {/* 6 linh vật để chọn */}
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {SYMBOLS.map(sym => {
+                      const count = adminOverrideSelection.filter(s => s === sym.key).length;
+                      const isSelected = count > 0;
+                      return (
+                        <button
+                          key={sym.key}
+                          type="button"
+                          onClick={() => handleAdminSelect(sym.key)}
+                          className={`p-2 rounded-lg border flex flex-col items-center justify-center transition-all relative ${
+                            isSelected 
+                              ? 'bg-red-500/10 border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.3)] scale-105 animate-pulse' 
+                              : 'bg-white/3 border-white/5 hover:bg-white/5 text-white/70'
+                          }`}
+                        >
+                          {count > 0 && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
+                              x{count}
+                            </div>
+                          )}
+                          <span className="text-xl">{sym.emoji}</span>
+                          <span className="text-[9px] font-medium mt-0.5">{sym.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleAdminClear}
+                      className="flex-1 py-1.5 rounded-lg bg-white/5 border border-white/8 hover:bg-white/10 text-white/70 text-[10px] font-bold transition-all"
+                    >
+                      Xóa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAdminSubmit}
+                      disabled={adminOverrideSelection.length !== 3}
+                      className="flex-1 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 disabled:opacity-30 disabled:hover:bg-red-500 text-white text-[10px] font-bold transition-all shadow-[0_0_10px_rgba(239,68,68,0.2)]"
+                    >
+                      Áp dụng
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={handleAdminClear}
-                    className="flex-1 py-1.5 rounded-lg bg-white/5 border border-white/8 hover:bg-white/10 text-white/70 text-[10px] font-bold transition-all"
-                  >
-                    Xóa
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAdminSubmit}
-                    disabled={adminOverrideSelection.length !== 3}
-                    className="flex-1 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 disabled:opacity-30 disabled:hover:bg-red-500 text-white text-[10px] font-bold transition-all shadow-[0_0_10px_rgba(239,68,68,0.2)]"
-                  >
-                    Áp dụng
-                  </button>
+                <div className="border-t border-white/5 my-2" />
+
+                <div className="space-y-3">
+                  <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1">
+                    ⚙️ Thiết lập Chế độ game (Admin)
+                  </p>
+                  <div className="text-[10px] text-white/50 leading-relaxed">
+                    Ép buộc thuật toán chạy chế độ mong muốn cho ván hiện tại.
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleAdminModeSubmit('auto')}
+                      className={`py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all border ${
+                        currentAdminMode === 'auto'
+                          ? 'bg-white/20 border-white text-white shadow-[0_0_10px_rgba(255,255,255,0.25)]'
+                          : 'bg-white/5 border-white/8 hover:bg-white/10 text-white/80'
+                      }`}
+                    >
+                      🤖 Tự động (Hybrid)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAdminModeSubmit('pure_random')}
+                      className={`py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all border ${
+                        currentAdminMode === 'pure_random'
+                          ? 'bg-emerald-500 border-emerald-400 text-black shadow-[0_0_10px_rgba(16,185,129,0.45)]'
+                          : 'bg-emerald-500/15 border-emerald-500/30 hover:bg-emerald-500/25 text-emerald-400'
+                      }`}
+                    >
+                      🎲 Ngẫu nhiên (Mode 1)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAdminModeSubmit('save_user')}
+                      className={`py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all border ${
+                        currentAdminMode === 'save_user'
+                          ? 'bg-blue-500 border-blue-400 text-black shadow-[0_0_10px_rgba(59,130,246,0.45)]'
+                          : 'bg-blue-500/15 border-blue-500/30 hover:bg-blue-500/25 text-blue-400'
+                      }`}
+                    >
+                      🎣 Cứu user (Mode 2)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAdminModeSubmit('sweep_216')}
+                      className={`py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all border ${
+                        currentAdminMode === 'sweep_216'
+                          ? 'bg-purple-500 border-purple-400 text-black shadow-[0_0_10px_rgba(168,85,247,0.45)]'
+                          : 'bg-purple-500/15 border-purple-500/30 hover:bg-purple-500/25 text-purple-400'
+                      }`}
+                    >
+                      🕸️ Quét 216 (Mode 3)
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

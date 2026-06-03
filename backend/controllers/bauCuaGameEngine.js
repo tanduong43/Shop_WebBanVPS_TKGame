@@ -358,6 +358,47 @@ async function runRound(roomId) {
       finalResult = freshRound.adminOverride;
       gameMode = 'admin_override';
       console.log(`🎛️ [Room ${roomId}] ADMIN OVERRIDE: ${finalResult.join(', ')}`);
+    } else if (freshRound.adminModeOverride && ['pure_random', 'save_user', 'sweep_216'].includes(freshRound.adminModeOverride)) {
+      console.log(`🎛️ [Room ${roomId}] ADMIN MODE OVERRIDE: ${freshRound.adminModeOverride}`);
+      if (freshRound.adminModeOverride === 'pure_random') {
+        finalResult = randomDice();
+        gameMode = BAUCUA_MODE.PURE_RANDOM;
+      } else if (freshRound.adminModeOverride === 'save_user') {
+        const realBets = freshRound.bets.filter(b => !b.isBot);
+        const realUserIds = [...new Set(realBets.map(b => b.userId?.toString()).filter(Boolean))];
+        const targetUserId = realUserIds[0] || null;
+
+        if (targetUserId) {
+          const targetBets = realBets.filter(b => b.userId?.toString() === targetUserId);
+          let bestResult = randomDice();
+          let bestProfit = -Infinity;
+          for (let i = 0; i < 200; i++) {
+            const candidate = randomDice();
+            const userProfit = targetBets.reduce((s, b) => s + calcProfit(b, candidate), 0);
+            if (userProfit > bestProfit) {
+              bestProfit = userProfit;
+              bestResult = candidate;
+            }
+          }
+          finalResult = bestResult;
+          gameMode = BAUCUA_MODE.SAVE_USER;
+        } else {
+          finalResult = randomDice();
+          gameMode = BAUCUA_MODE.PURE_RANDOM;
+        }
+      } else if (freshRound.adminModeOverride === 'sweep_216') {
+        const realBets = freshRound.bets.filter(b => !b.isBot);
+        const all216 = generateAll216();
+        const withProfit = all216.map(combo => ({
+          result: combo,
+          houseProfit: calcHouseProfit(combo, realBets),
+        }));
+        const positive = withProfit.filter(x => x.houseProfit > 0);
+        const pool = positive.length > 0 ? positive : withProfit.sort((a, b) => b.houseProfit - a.houseProfit).slice(0, 30);
+        const picked = pool[Math.floor(Math.random() * pool.length)];
+        finalResult = picked.result;
+        gameMode = BAUCUA_MODE.SWEEP_216;
+      }
     } else {
       const hybrid = await hybridAlgorithm(freshRound, roomId);
       finalResult = hybrid.result;
@@ -516,6 +557,27 @@ async function initGameEngine(ioInstance) {
             roomId, result, by: socket.user.username
           });
           console.log(`🎛️ Admin ${socket.user.username} override room ${roomId}: ${result.join(', ')}`);
+        } catch (err) {
+          socket.emit('baucua:error', { message: err.message });
+        }
+      });
+
+      socket.on('baucua:admin_mode_override', async ({ roomId, mode }) => {
+        try {
+          const allowedModes = ['pure_random', 'save_user', 'sweep_216', 'auto'];
+          if (!allowedModes.includes(mode)) {
+            socket.emit('baucua:error', { message: 'Chế độ chơi ghi đè không hợp lệ' });
+            return;
+          }
+          const roomState = activeRooms.get(roomId);
+          if (!roomState?.currentRoundId) {
+            socket.emit('baucua:error', { message: 'Không tìm thấy ván đang chạy cho phòng này' });
+            return;
+          }
+          const val = mode === 'auto' ? null : mode;
+          await BauCuaRound.findByIdAndUpdate(roomState.currentRoundId, { adminModeOverride: val });
+          socket.emit('baucua:mode_override_success', { roomId, mode });
+          console.log(`🎛️ Admin ${socket.user.username} override mode room ${roomId}: ${mode}`);
         } catch (err) {
           socket.emit('baucua:error', { message: err.message });
         }

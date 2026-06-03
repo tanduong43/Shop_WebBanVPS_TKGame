@@ -131,6 +131,7 @@ export const adminBauCuaAPI = {
   toggleRoom:      (id)             => api.put(`/admin/baucua/rooms/${id}/toggle`),
   deleteRoom:      (id)             => api.delete(`/admin/baucua/rooms/${id}`),
   getRoomHistory:  (id, params)     => api.get(`/admin/baucua/rooms/${id}/history`, { params }),
+  getRoomStats:    (id, params)     => api.get(`/admin/baucua/rooms/${id}/stats`, { params }),
 };
 
 // ─── Trivia (Đố Vui Sinh Tồn) API ────────────────────────────────────────────────
@@ -157,6 +158,7 @@ export const adminAPI = {
   getUsers:     (params) => api.get('/admin/users', { params }),
   deleteUser:   (id)     => api.delete(`/admin/users/${id}`),
   restoreUser:  (id)     => api.put(`/admin/users/${id}/restore`),
+  getLogs:      (params) => api.get('/admin/logs', { params }),
   
   // --- Admin Deposit APIs ---
   getAllDeposits:  (params) => api.get('/admin/deposits', { params }),

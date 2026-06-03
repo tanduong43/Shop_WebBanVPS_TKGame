@@ -173,4 +173,116 @@ const getStats = async (req, res, next) => {
   }
 };
 
-module.exports = { getAllRooms, createRoom, updateRoom, toggleRoom, deleteRoom, getRoomHistory, getStats };
+/**
+ * GET /api/admin/baucua/rooms/:id/stats
+ * Thống kê thắng/thua của từng user trong phòng
+ */
+const getRoomStats = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { page = 1, limit = 20, search, sortBy } = req.query;
+    const pageNum = Math.max(1, parseInt(page, 10));
+    const limitNum = Math.min(parseInt(limit, 10), 100);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Check if room exists
+    const room = await BauCuaRoom.findById(id);
+    if (!room) return errorResponse(res, 'Phòng không tồn tại', 404);
+
+    let sortStage = { netProfit: -1 }; // Mặc định thắng nhiều nhất
+    if (sortBy === 'profit_asc') {
+      sortStage = { netProfit: 1 }; // Thua nhiều nhất
+    } else if (sortBy === 'bet_desc') {
+      sortStage = { totalBet: -1 }; // Cược nhiều nhất
+    } else if (sortBy === 'win_desc') {
+      sortStage = { totalWin: -1 }; // Thắng nhiều nhất
+    } else if (sortBy === 'rounds_desc') {
+      sortStage = { roundsPlayed: -1 }; // Chơi nhiều ván nhất
+    }
+
+    const aggregationPipeline = [
+      { $match: { roomId: room._id, status: 'finished' } },
+      { $unwind: '$bets' },
+      { $match: { 'bets.isBot': false } },
+      {
+        $group: {
+          _id: '$bets.userId',
+          totalBet: { $sum: '$bets.amount' },
+          totalWin: { $sum: '$bets.payout' },
+          netProfit: { $sum: '$bets.profit' },
+          roundsPlayed: { $sum: 1 }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'userInfo'
+        }
+      },
+      { $unwind: '$userInfo' },
+      {
+        $project: {
+          userId: '$_id',
+          username: '$userInfo.username',
+          email: '$userInfo.email',
+          totalBet: 1,
+          totalWin: 1,
+          netProfit: 1,
+          roundsPlayed: 1
+        }
+      }
+    ];
+
+    if (search) {
+      aggregationPipeline.push({
+        $match: {
+          $or: [
+            { username: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } }
+          ]
+        }
+      });
+    }
+
+    aggregationPipeline.push({
+      $facet: {
+        metadata: [{ $count: 'total' }],
+        data: [
+          { $sort: sortStage },
+          { $skip: skip },
+          { $limit: limitNum }
+        ]
+      }
+    });
+
+    const result = await BauCuaRound.aggregate(aggregationPipeline);
+    const total = result[0]?.metadata[0]?.total || 0;
+    const data = result[0]?.data || [];
+
+    return res.json({
+      success: true,
+      data,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = {
+  getAllRooms,
+  createRoom,
+  updateRoom,
+  toggleRoom,
+  deleteRoom,
+  getRoomHistory,
+  getStats,
+  getRoomStats
+};

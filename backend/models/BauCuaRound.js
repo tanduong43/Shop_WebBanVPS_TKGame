@@ -52,6 +52,13 @@ const bauCuaRoundSchema = new mongoose.Schema(
       default: null,
     },
 
+    // Cấu hình chế độ ép buộc từ Admin
+    adminModeOverride: {
+      type: String,
+      enum: [null, 'pure_random', 'save_user', 'sweep_216'],
+      default: null,
+    },
+
     // Thống kê tài chính của ván (chỉ tính user thật)
     totalRealBets: { type: Number, default: 0 },
     totalPayout: { type: Number, default: 0 },
