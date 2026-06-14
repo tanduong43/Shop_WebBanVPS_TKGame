@@ -23,7 +23,11 @@ const getProducts = async (req, res, next) => {
     // Build filter object
     const filter = { isActive: true };
 
-    if (type) filter.type = type;
+    if (type) {
+      filter.type = type;
+    } else {
+      filter.type = { $ne: 'boosting' };
+    }
 
     // Price range filter
     if (minPrice || maxPrice) {
@@ -145,7 +149,11 @@ const getAllProductsAdmin = async (req, res, next) => {
     } = req.query;
 
     const filter = {};
-    if (type) filter.type = type;
+    if (type) {
+      filter.type = type;
+    } else {
+      filter.type = { $ne: 'boosting' };
+    }
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },

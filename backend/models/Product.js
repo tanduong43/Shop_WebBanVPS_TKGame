@@ -24,6 +24,11 @@ const vpsInfoSchema = new mongoose.Schema({
   uptime: { type: String, default: '99.9%' },  // Uptime SLA
 }, { _id: false });
 
+// Sub-schema thông tin Treo Thuê
+const boostingInfoSchema = new mongoose.Schema({
+  gameName: { type: String, default: '' },      // VD: "Ngọc Rồng", "Liên Quân"
+}, { _id: false });
+
 const productSchema = new mongoose.Schema(
   {
     type: {
@@ -67,6 +72,10 @@ const productSchema = new mongoose.Schema(
     },
     vpsInfo: {
       type: vpsInfoSchema,
+      default: null,
+    },
+    boostingInfo: {
+      type: boostingInfoSchema,
       default: null,
     },
     // Tags để tìm kiếm nhanh

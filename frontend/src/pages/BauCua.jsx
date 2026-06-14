@@ -444,7 +444,7 @@ export default function BauCua() {
       setRolling(false);
       setMyBets({});
       setResultPopup(null);
-      setCurrentAdminMode('auto');
+      setCurrentAdminMode(data.adminModeOverride || 'auto');
     });
 
     // Ai đó đặt cược

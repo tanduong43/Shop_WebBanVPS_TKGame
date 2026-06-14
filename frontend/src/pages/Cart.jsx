@@ -17,7 +17,7 @@ const formatPrice = (p) =>
 
 const Cart = () => {
   const { cart, totalPrice, totalItems, removeFromCart, updateQuantity, clearCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, updateBalance } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
@@ -40,18 +40,22 @@ const Cart = () => {
       }));
 
       const res = await orderAPI.create({ items });
-      const { zaloUrl } = res.data.data;
 
-      toast.success('Đặt hàng thành công! Đang chuyển sang Zalo...', { autoClose: 2000 });
+      if (res.data?.data?.newBalance !== undefined) {
+        updateBalance(res.data.data.newBalance);
+      }
+
+      toast.success(res.data?.message || 'Thanh toán thành công! Đơn hàng của bạn đang được xử lý.', { autoClose: 2000 });
       clearCart();
 
-      // Redirect sang Zalo sau 1.5 giây
       setTimeout(() => {
-        window.open(zaloUrl, '_blank');
         navigate('/orders');
-      }, 1500);
+      }, 1000);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Đặt hàng thất bại, vui lòng thử lại');
+      toast.error(err.response?.data?.message || 'Thanh toán thất bại, vui lòng thử lại');
+      if (err.response?.data?.message?.includes('Số dư không đủ')) {
+        navigate('/deposit');
+      }
     } finally {
       setLoading(false);
     }
@@ -76,73 +80,60 @@ const Cart = () => {
 
   return (
     <div className="min-h-screen pt-24 pb-16">
-      <div className="section-container max-w-5xl">
+      <div className="section-container max-w-4xl">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Giỏ Hàng</h1>
-            <p className="text-white/50 mt-1">{totalItems} sản phẩm</p>
+            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <FiShoppingCart className="text-primary-400" /> Thanh toán
+            </h1>
+            <p className="text-white/50 mt-1">{totalItems} sản phẩm trong đơn hàng</p>
           </div>
-          <button onClick={clearCart} className="text-sm text-red-400 hover:text-red-300 flex items-center gap-1.5 transition-colors">
-            <FiTrash2 /> Xóa tất cả
-          </button>
+          {cart.length > 0 && (
+            <button onClick={clearCart} className="text-white/40 hover:text-red-400 flex items-center gap-2 text-sm transition-colors">
+              <FiTrash2 /> Xóa tất cả
+            </button>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Cart items */}
-          <div className="lg:col-span-2 space-y-4">
-            {cart.map((item) => (
-              <CartItemRow key={item._id} item={item} onRemove={removeFromCart} onUpdate={updateQuantity} />
-            ))}
-          </div>
+        <div className="space-y-4 mb-8">
+          {cart.map((item) => (
+            <CartItemRow key={item._id} item={item} onRemove={removeFromCart} onUpdate={updateQuantity} />
+          ))}
+        </div>
 
-          {/* Order Summary */}
-          <div className="lg:col-span-1">
-            <div className="glass-card p-6 sticky top-24">
-              <h3 className="text-lg font-semibold text-white mb-5">Tóm Tắt Đơn Hàng</h3>
+        <div className="glass-card p-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div>
+              <span className="text-white/70 block mb-1">Tổng cộng cần thanh toán:</span>
+              <span className="text-3xl font-bold text-white">{formatPrice(totalPrice)}</span>
+            </div>
 
-              {/* Items breakdown */}
-              <div className="space-y-2 mb-4">
-                {cart.map((item) => (
-                  <div key={item._id} className="flex justify-between text-sm">
-                    <span className="text-white/50 truncate max-w-[60%]">{item.name} ×{item.quantity}</span>
-                    <span className="text-white/70">{formatPrice(item.price * item.quantity)}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="border-t border-white/10 pt-4 mb-5">
-                <div className="flex justify-between items-center">
-                  <span className="text-white/70">Tổng cộng</span>
-                  <span className="text-2xl font-bold gradient-text">{formatPrice(totalPrice)}</span>
-                </div>
-              </div>
-
-              {/* Zalo notice */}
-              <div className="flex gap-2 p-3 rounded-xl bg-green-500/10 border border-green-500/20 mb-5">
-                <FiAlertCircle className="text-green-400 flex-shrink-0 mt-0.5" />
-                <p className="text-green-400/80 text-xs leading-relaxed">
-                  Sau khi đặt hàng, bạn sẽ được chuyển sang <strong>Zalo</strong> để liên hệ admin xác nhận đơn hàng.
-                </p>
-              </div>
-
+            <div className="w-full sm:w-auto flex flex-col gap-3">
               <button
                 onClick={handleOrder}
                 disabled={loading}
-                className="btn-primary w-full flex items-center justify-center gap-2 py-3.5"
+                className="btn-primary w-full sm:w-auto px-10 py-3.5 flex items-center justify-center gap-2 text-lg"
               >
                 {loading ? (
                   <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang xử lý...</>
                 ) : (
-                  <><FiMessageCircle className="text-lg" /> Đặt hàng & Liên hệ Zalo <FiArrowRight /></>
+                  <><FiMessageCircle /> Đặt hàng ngay <FiArrowRight /></>
                 )}
               </button>
-
+              
               {!isAuthenticated && (
-                <p className="text-center text-white/40 text-xs mt-3">
+                <p className="text-center text-white/40 text-xs mt-1">
                   <Link to="/login" className="text-primary-400 hover:underline">Đăng nhập</Link> để đặt hàng
                 </p>
               )}
             </div>
+          </div>
+          
+          <div className="flex gap-2 p-3 mt-6 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <FiAlertCircle className="text-amber-400 flex-shrink-0 mt-0.5" />
+            <p className="text-amber-400/80 text-xs leading-relaxed">
+              Sau khi đặt hàng, hệ thống sẽ trừ trực tiếp <strong>{formatPrice(totalPrice)}</strong> vào số dư của bạn và đơn hàng sẽ được chuyển sang trạng thái <strong>Chờ xử lý</strong>.
+            </p>
           </div>
         </div>
       </div>

@@ -162,25 +162,29 @@ const adjustUserBalance = async (req, res, next) => {
       return errorResponse(res, 'Số tiền thay đổi không hợp lệ và phải khác 0', 400);
     }
 
-    const user = await User.findById(id);
-    if (!user) {
-      return errorResponse(res, 'Không tìm thấy người dùng', 404);
+    // Cập nhật User bằng Atomic Update
+    // Nếu trừ tiền (amount < 0), đảm bảo số dư không được âm
+    const condition = { _id: id };
+    if (amount < 0) {
+      condition.balance = { $gte: Math.abs(amount) };
     }
 
-    const balanceBefore = user.balance || 0;
-    const balanceAfter = balanceBefore + amount;
+    const updatedUser = await User.findOneAndUpdate(
+      condition,
+      { $inc: { balance: amount } },
+      { new: true }
+    );
 
-    if (balanceAfter < 0) {
-      return errorResponse(res, 'Số dư tài khoản sau khi trừ không được nhỏ hơn 0', 400);
+    if (!updatedUser) {
+      return errorResponse(res, 'Số dư tài khoản sau khi trừ không được nhỏ hơn 0 hoặc người dùng không tồn tại', 400);
     }
 
-    // Cập nhật User
-    user.balance = balanceAfter;
-    await user.save();
+    const balanceAfter = updatedUser.balance;
+    const balanceBefore = balanceAfter - amount;
 
     // Lưu biến động số dư
     const transaction = new Transaction({
-      userId: user._id,
+      userId: updatedUser._id,
       type: TRANSACTION_TYPES.ADMIN_ADJUST,
       amount,
       balanceBefore,
@@ -193,18 +197,18 @@ const adjustUserBalance = async (req, res, next) => {
     await logAdminAction(
       req.user._id,
       'ADJUST_BALANCE',
-      `Điều chỉnh ví user "${user.username}" (ID: ${user._id}): ${amount > 0 ? '+' : ''}${amount.toLocaleString()} VNĐ (Số dư: ${balanceBefore.toLocaleString()}đ -> ${balanceAfter.toLocaleString()}đ). Lý do: ${description}`
+      `Điều chỉnh ví user "${updatedUser.username}" (ID: ${updatedUser._id}): ${amount > 0 ? '+' : ''}${amount.toLocaleString()} VNĐ (Số dư: ${balanceBefore.toLocaleString()}đ -> ${balanceAfter.toLocaleString()}đ). Lý do: ${description}`
     );
 
     // Bắn realtime
-    emitToUser(user._id, 'balance:updated', {
+    emitToUser(updatedUser._id, 'balance:updated', {
       balance: balanceAfter,
       message: `Số dư của bạn đã được admin điều chỉnh: ${amount > 0 ? '+' : ''}${amount.toLocaleString()} VNĐ`,
     });
 
     return successResponse(
       res,
-      { userId: user._id, username: user.username, balanceBefore, balanceAfter },
+      { userId: updatedUser._id, username: updatedUser.username, balanceBefore, balanceAfter },
       'Điều chỉnh số dư người dùng thành công'
     );
   } catch (error) {

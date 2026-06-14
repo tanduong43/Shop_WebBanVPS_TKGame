@@ -17,7 +17,7 @@ const formatPrice = (price) =>
 
 const ProductCard = ({ product }) => {
   const { addToCart, isInCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, updateBalance } = useAuth();
   const navigate = useNavigate();
   const inCart = isInCart(product._id);
   const isGame = product.type === 'game_account';
@@ -32,6 +32,32 @@ const ProductCard = ({ product }) => {
       return;
     }
     addToCart(product);
+  };
+
+  const handleBuyNow = async (e) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      toast.warn('Vui lòng đăng nhập để mua hàng!');
+      navigate('/login');
+      return;
+    }
+    
+    try {
+      const res = await import('../services/api').then(m => m.orderAPI.create({
+        items: [{ productId: product._id, quantity: 1 }]
+      }));
+      if (res.data?.data?.newBalance !== undefined) {
+        updateBalance(res.data.data.newBalance);
+      }
+      toast.success(res.data.message || 'Thanh toán thành công!', { autoClose: 2000 });
+      // We can just redirect to orders.
+      navigate('/orders');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Thanh toán thất bại, vui lòng thử lại');
+      if (err.response?.data?.message?.includes('Số dư không đủ')) {
+        navigate('/deposit'); // Optionally redirect to deposit
+      }
+    }
   };
 
   return (
@@ -124,25 +150,35 @@ const ProductCard = ({ product }) => {
             <div>
               <p className="text-lg font-bold gradient-text">{formatPrice(product.price)}</p>
             </div>
-            <button
-              onClick={handleAddToCart}
-              disabled={product.stock === 0}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 whitespace-nowrap ${
-                product.stock === 0
-                  ? 'bg-white/5 text-white/30 cursor-not-allowed'
-                  : inCart
-                  ? 'bg-green-500/20 border border-green-500/30 text-green-400 hover:bg-green-500/30'
-                  : 'btn-primary py-2 px-3 text-xs'
-              }`}
-            >
-              {product.stock === 0 ? (
-                'Hết hàng'
-              ) : inCart ? (
-                <><FiCheck /> Đã thêm</>
-              ) : (
-                <><FiShoppingCart /> Thêm vào giỏ</>
+            <div className="flex gap-1.5">
+              <button
+                onClick={handleAddToCart}
+                disabled={product.stock === 0}
+                className={`flex items-center gap-1 px-2.5 py-2 rounded-xl text-[11px] font-semibold transition-all duration-200 whitespace-nowrap ${
+                  product.stock === 0
+                    ? 'bg-white/5 text-white/30 cursor-not-allowed'
+                    : inCart
+                    ? 'bg-green-500/20 border border-green-500/30 text-green-400 hover:bg-green-500/30'
+                    : 'bg-white/5 hover:bg-white/10 text-white/80 border border-white/10'
+                }`}
+              >
+                {product.stock === 0 ? (
+                  'Hết hàng'
+                ) : inCart ? (
+                  <><FiCheck /> Đã thêm</>
+                ) : (
+                  <><FiShoppingCart /> Thêm giỏ</>
+                )}
+              </button>
+              {product.stock > 0 && (
+                <button
+                  onClick={handleBuyNow}
+                  className="btn-primary py-2 px-3 text-[11px] font-semibold whitespace-nowrap"
+                >
+                  Mua ngay
+                </button>
               )}
-            </button>
+            </div>
           </div>
         </div>
       </TiltCard>

@@ -1,7 +1,8 @@
 // config/constants.js - Các hằng số toàn cục của ứng dụng
 
 const ORDER_STATUS = {
-  PENDING_CONTACT: 'pending_contact', // Chờ liên hệ qua Zalo
+  PENDING_CONTACT: 'pending_contact', // Chờ liên hệ qua Zalo / Đợi xử lý
+  PROCESSING: 'processing',           // Đang cày / Đang xử lý
   COMPLETED: 'completed',             // Đã hoàn thành
   CANCELLED: 'cancelled',             // Đã hủy
 };
@@ -9,6 +10,7 @@ const ORDER_STATUS = {
 const PRODUCT_TYPES = {
   GAME_ACCOUNT: 'game_account', // Tài khoản game
   VPS: 'vps',                   // VPS
+  BOOSTING: 'boosting',         // Treo Thuê
 };
 
 const USER_ROLES = {

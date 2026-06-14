@@ -65,6 +65,7 @@ Chỉnh `.env` (ít nhất `MONGODB_URI`, `JWT_SECRET`, `ZALO_PHONE`), sau đó:
 npm run seed
 npm run seed:trivia
 npm run seed:wheels
+npm run seed:all
 npm run dev
 ```
 
@@ -90,6 +91,7 @@ Backend có sẵn script:
 ```bash
 cd backend
 npm run seed
+npm run seed:all
 ```
 
 Seed sẽ tạo:

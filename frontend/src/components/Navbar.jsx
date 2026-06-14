@@ -3,15 +3,17 @@ import { useState, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useSettings } from '../context/SettingsContext';
 import {
   FiShoppingCart, FiLogOut, FiMenu, FiX,
-  FiShield, FiPackage, FiHome, FiGrid, FiUser, FiZap,
+  FiShield, FiPackage, FiHome, FiGrid, FiUser, FiZap, FiServer
 } from 'react-icons/fi';
-import logo from '../assets/logo.png';
+import defaultLogo from '../assets/logo.png';
 
 const Navbar = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const { totalItems } = useCart();
+  const { settings } = useSettings();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -33,9 +35,10 @@ const Navbar = () => {
   const navLinks = [
     { to: '/', label: 'Trang Chủ', icon: FiHome },
     { to: '/products', label: 'Sản Phẩm', icon: FiGrid },
-    { to: '/games', label: 'Trò Chơi', icon: FiZap }, // Trưng tâm game
-    { to: '/orders', label: 'Đơn Hàng', icon: FiPackage, authRequired: true },
   ];
+  if (settings.boosting_enabled !== false) navLinks.push({ to: '/boosting', label: 'Treo Thuê', icon: FiServer });
+  if (settings.games_enabled !== false) navLinks.push({ to: '/games', label: 'Trò Chơi', icon: FiZap });
+  navLinks.push({ to: '/orders', label: 'Đơn Hàng', icon: FiPackage, authRequired: true });
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-dark-900/95 backdrop-blur-lg shadow-2xl border-b border-white/5' : 'bg-transparent'
@@ -44,8 +47,8 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <img src={logo} alt="DK logo" className="w-9 h-9 rounded-xl object-cover group-hover:shadow-glow-primary transition-all duration-300" />
-            <span className="text-xl font-bold gradient-text hidden sm:block">DuongKa</span>
+            <img src={settings.shop_logo || defaultLogo} alt="Logo" className="w-9 h-9 rounded-xl object-cover group-hover:shadow-glow-primary transition-all duration-300 bg-white/5" />
+            <span className="text-xl font-bold gradient-text hidden sm:block">{settings.shop_name || 'DuongKa'}</span>
           </Link>
 
           {/* Desktop Nav */}

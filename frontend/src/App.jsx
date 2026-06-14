@@ -19,6 +19,7 @@ import WheelPlay from './pages/WheelPlay';
 import Games from './pages/Games';
 import BauCua from './pages/BauCua';
 import Trivia from './pages/Trivia';
+import Boosting from './pages/Boosting'; // Thêm Boosting
 import NeonFishSchool from './components/NeonFishSchool';
 import AnnouncementModal from './components/AnnouncementModal';
 
@@ -26,11 +27,11 @@ import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/Products';
 import AdminOrders from './pages/admin/Orders';
+import AdminBoosting from './pages/admin/AdminBoosting'; // Thêm Quản lý Treo Thuê
 import AdminDeposits from './pages/admin/Deposits'; // Thêm AdminDeposits
 import AdminWheels from './pages/admin/AdminWheels'; // Thêm AdminWheels
-import AdminSpinHistory from './pages/admin/AdminSpinHistory'; // Thêm AdminSpinHistory
-import AdminQuestions from './pages/admin/AdminQuestions';
 import AdminUsers from './pages/admin/Users';
+import AdminSettings from './pages/admin/AdminSettings';
 import AdminLogs from './pages/admin/AdminLogs';
 
 const PublicLayout = () => (
@@ -140,6 +141,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/boosting" element={<Boosting />} />
           <Route path="/games" element={<Games />} />
           <Route
             path="/games/bau-cua/:roomId"
@@ -179,10 +181,10 @@ export default function App() {
           <Route index element={<AdminDashboard />} />
           <Route path="products" element={<AdminProducts />} />
           <Route path="orders" element={<AdminOrders />} />
+          <Route path="boosting" element={<AdminBoosting />} />
           <Route path="deposits" element={<AdminDeposits />} />
           <Route path="wheels" element={<AdminWheels />} />
-          <Route path="spins" element={<AdminSpinHistory />} />
-          <Route path="questions" element={<AdminQuestions />} />
+          <Route path="settings" element={<AdminSettings />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="logs" element={<AdminLogs />} />
         </Route>

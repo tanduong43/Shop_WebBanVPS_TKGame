@@ -10,7 +10,7 @@ const formatDate = (d) =>
   new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(d));
 
 const STATUS_CONFIG = {
-  pending_contact: { label: 'Chờ liên hệ', icon: FiClock,   className: 'badge-pending' },
+  pending_contact: { label: 'Chờ xử lý', icon: FiClock,   className: 'badge-pending' },
   completed:       { label: 'Hoàn thành',  icon: FiCheck,   className: 'badge-completed' },
   cancelled:       { label: 'Đã hủy',      icon: FiX,       className: 'badge-cancelled' },
 };
@@ -59,9 +59,9 @@ const Orders = () => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-              <FiPackage className="text-primary-400" /> Đơn Hàng Của Tôi
+              <FiPackage className="text-primary-400" /> Quản Lý Dịch Vụ & Đơn Hàng
             </h1>
-            <p className="text-white/50 mt-1">{pagination.total} đơn hàng</p>
+            <p className="text-white/50 mt-1">{pagination.total} mục</p>
           </div>
           <button onClick={() => fetchOrders(currentPage)}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all text-sm">
@@ -135,23 +135,68 @@ const OrderCard = ({ order }) => {
       {expanded && (
         <div className="border-t border-white/5 p-5 space-y-3 animate-fade-in">
           {order.items.map((item, i) => (
-            <div key={i} className="flex justify-between text-sm">
-              <span className="text-white/70">{item.name} <span className="text-white/30">×{item.quantity}</span></span>
-              <span className="text-white/60">{formatPrice(item.price * item.quantity)}</span>
+            <div key={i} className="bg-white/5 rounded-xl p-4 space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-white font-semibold">{item.name} <span className="text-white/30 text-xs">×{item.quantity}</span></span>
+                  <div className="text-xs text-white/50 mt-1 uppercase tracking-widest">{item.type === 'vps' ? 'Dịch vụ VPS' : item.type === 'game_account' ? 'Tài khoản Game' : 'Dịch vụ'}</div>
+                </div>
+                <span className="text-primary-400 font-bold">{formatPrice(item.price * item.quantity)}</span>
+              </div>
+
+              {/* Service Config Snapshot */}
+              {(item.vpsInfo || item.accountInfo) && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                  {item.type === 'vps' && item.vpsInfo && (
+                    <>
+                      <div className="text-xs text-white/40">Hệ điều hành: <span className="text-white/80">{item.vpsInfo.os || 'N/A'}</span></div>
+                      <div className="text-xs text-white/40">CPU: <span className="text-white/80">{item.vpsInfo.cpu || 'N/A'}</span></div>
+                      <div className="text-xs text-white/40">RAM: <span className="text-white/80">{item.vpsInfo.ram || 'N/A'}</span></div>
+                      <div className="text-xs text-white/40">Ổ cứng: <span className="text-white/80">{item.vpsInfo.storage || 'N/A'}</span></div>
+                    </>
+                  )}
+                  {item.type === 'game_account' && item.accountInfo && (
+                    <>
+                      <div className="text-xs text-white/40">Server: <span className="text-white/80">{item.accountInfo.server || 'N/A'}</span></div>
+                      <div className="text-xs text-white/40">Level: <span className="text-white/80">{item.accountInfo.level || '0'}</span></div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Credentials Section if Completed */}
+              {order.status === 'completed' && item.credentials && (item.credentials.ip || item.credentials.username || item.credentials.password || item.credentials.server) && (
+                <div className="mt-3 bg-dark-900/50 rounded-lg p-3 border border-primary-500/20">
+                  <h4 className="text-xs font-bold text-primary-400 mb-2 uppercase tracking-widest">Thông tin cấp phát</h4>
+                  <div className="space-y-1.5">
+                    {item.credentials.ip && <div className="flex justify-between text-sm"><span className="text-white/50">IP/Host:</span> <span className="font-mono text-white select-all">{item.credentials.ip}</span></div>}
+                    {item.credentials.username && <div className="flex justify-between text-sm"><span className="text-white/50">Tài khoản:</span> <span className="font-mono text-white select-all">{item.credentials.username}</span></div>}
+                    {item.credentials.password && <div className="flex justify-between text-sm"><span className="text-white/50">Mật khẩu:</span> <span className="font-mono text-white select-all">{item.credentials.password}</span></div>}
+                    {item.credentials.server && <div className="flex justify-between text-sm"><span className="text-white/50">Server Game:</span> <span className="font-mono text-white">{item.credentials.server}</span></div>}
+                    
+                    {item.type === 'vps' && (
+                      <>
+                        <div className="flex justify-between text-sm mt-2 pt-2 border-t border-white/5"><span className="text-white/50">Ngày kích hoạt:</span> <span className="text-white/80">{item.credentials.createdAt ? formatDate(item.credentials.createdAt) : 'N/A'}</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-white/50">Chu kỳ:</span> <span className="text-white/80">{item.credentials.cycle || '1 Tháng'}</span></div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-white/50">Ngày hết hạn:</span> 
+                          <span className={`font-semibold ${
+                            item.credentials.expiresAt && new Date(item.credentials.expiresAt) < new Date() 
+                              ? 'text-red-400' 
+                              : item.credentials.expiresAt && new Date(item.credentials.expiresAt) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                                ? 'text-amber-400'
+                                : 'text-green-400'
+                          }`}>
+                            {item.credentials.expiresAt ? formatDate(item.credentials.expiresAt) : 'N/A'}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
-          {/* Re-contact Zalo button for pending orders */}
-          {order.status === 'pending_contact' && order.zaloMessage && (
-            <button
-              onClick={() => {
-                const phone = import.meta.env.VITE_ZALO_PHONE || '0900000000';
-                window.open(`https://zalo.me/${phone}?text=${encodeURIComponent(order.zaloMessage)}`, '_blank');
-              }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 transition-all text-sm font-medium mt-2"
-            >
-              <FiMessageCircle /> Liên hệ lại Admin qua Zalo
-            </button>
-          )}
         </div>
       )}
     </div>

@@ -325,6 +325,7 @@ async function runRound(roomId) {
       roundNumber,
       status: BAUCUA_STATUS.WAITING,
       waitingEndsAt,
+      adminModeOverride: room.adminMode === 'auto' ? null : room.adminMode,
     });
 
     activeRooms.set(roomId, { ...activeRooms.get(roomId), currentRoundId: round._id.toString() });
@@ -465,6 +466,7 @@ function emitRoomState(roomId, round, status) {
     status,
     waitingEndsAt: round.waitingEndsAt,
     bets: round.bets || [],
+    adminModeOverride: round.adminModeOverride,
   });
 }
 
@@ -575,6 +577,7 @@ async function initGameEngine(ioInstance) {
             return;
           }
           const val = mode === 'auto' ? null : mode;
+          await BauCuaRoom.findByIdAndUpdate(roomId, { adminMode: mode });
           await BauCuaRound.findByIdAndUpdate(roomState.currentRoundId, { adminModeOverride: val });
           socket.emit('baucua:mode_override_success', { roomId, mode });
           console.log(`🎛️ Admin ${socket.user.username} override mode room ${roomId}: ${mode}`);

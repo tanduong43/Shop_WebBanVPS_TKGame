@@ -36,22 +36,23 @@ const processSuccessfulDeposit = async (deposit, amountPaid, bankTxId = '') => {
   deposit.note = `Nạp tiền tự động thành công qua Banking. Mã GD NH: ${bankTxId}`;
   await deposit.save();
 
-  // Lấy thông tin user hiện tại để tính toán số dư trước/sau
-  const user = await User.findById(deposit.userId);
-  if (!user) {
-    throw new Error('Không tìm thấy người dùng khớp với đơn nạp tiền');
+  // Cập nhật số dư User bằng Atomic Update để tránh Race Condition
+  const updatedUser = await User.findOneAndUpdate(
+    { _id: deposit.userId },
+    { $inc: { balance: deposit.amount } },
+    { new: true }
+  );
+
+  if (!updatedUser) {
+    throw new Error('Không thể cập nhật số dư cho người dùng');
   }
 
-  const balanceBefore = user.balance || 0;
-  const balanceAfter = balanceBefore + deposit.amount;
-
-  // Cộng tiền vào tài khoản user
-  user.balance = balanceAfter;
-  await user.save();
+  const balanceAfter = updatedUser.balance;
+  const balanceBefore = balanceAfter - deposit.amount;
 
   // Tạo nhật ký biến động số dư (Transaction)
   const transaction = new Transaction({
-    userId: user._id,
+    userId: updatedUser._id,
     type: TRANSACTION_TYPES.DEPOSIT,
     amount: deposit.amount,
     balanceBefore,
@@ -63,7 +64,7 @@ const processSuccessfulDeposit = async (deposit, amountPaid, bankTxId = '') => {
   await transaction.save();
 
   // Phát tín hiệu Realtime qua Socket.IO tới User đang online
-  emitToUser(user._id, 'deposit:completed', {
+  emitToUser(updatedUser._id, 'deposit:completed', {
     success: true,
     amount: deposit.amount,
     balance: balanceAfter,
@@ -71,14 +72,14 @@ const processSuccessfulDeposit = async (deposit, amountPaid, bankTxId = '') => {
     message: `Nạp tiền thành công! +${deposit.amount.toLocaleString('vi-VN')} VNĐ vào tài khoản.`,
   });
 
-  emitToUser(user._id, 'balance:updated', {
+  emitToUser(updatedUser._id, 'balance:updated', {
     balance: balanceAfter,
   });
 
-  console.log(`💰 [Nạp Tiền Thành Công] User: ${user.username} | Số tiền: +${deposit.amount.toLocaleString()} VNĐ. Số dư hiện tại: ${balanceAfter.toLocaleString()} VNĐ`);
+  console.log(`💰 [Nạp Tiền Thành Công] User: ${updatedUser.username} | Số tiền: +${deposit.amount.toLocaleString()} VNĐ. Số dư hiện tại: ${balanceAfter.toLocaleString()} VNĐ`);
 
   // Gửi email thông báo cho admin (chạy nền, không block process)
-  sendAdminDepositEmail(deposit, user, deposit.amount).catch(err => {
+  sendAdminDepositEmail(deposit, updatedUser, deposit.amount).catch(err => {
     console.error('Lỗi khi gửi email admin:', err);
   });
 

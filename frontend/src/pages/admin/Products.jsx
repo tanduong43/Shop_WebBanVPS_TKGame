@@ -130,7 +130,7 @@ export default function AdminProducts() {
           : [],
       };
       base.vpsInfo = undefined;
-    } else {
+    } else if (form.type === 'vps') {
       base.vpsInfo = {
         ram: form.vpsInfo.ram?.trim(),
         cpu: form.vpsInfo.cpu?.trim(),
@@ -141,6 +141,9 @@ export default function AdminProducts() {
         uptime: form.vpsInfo.uptime?.trim(),
       };
       base.accountInfo = undefined;
+    } else { // boosting
+      base.accountInfo = undefined;
+      base.vpsInfo = undefined;
     }
     return base;
   }, [form]);
@@ -352,7 +355,7 @@ export default function AdminProducts() {
                       <p className="text-white/40 text-xs line-clamp-1">{p.description}</p>
                     </td>
                     <td className="p-4">
-                      <span className={p.type === 'game_account' ? 'badge-game' : 'badge-vps'}>
+                      <span className={p.type === 'game_account' ? 'badge-game' : p.type === 'vps' ? 'badge-vps' : 'badge-baucua text-orange-400 bg-orange-500/10'}>
                         {p.type}
                       </span>
                     </td>
@@ -536,7 +539,7 @@ export default function AdminProducts() {
                 )}
               </div>
             </div>
-          ) : (
+          ) : form.type === 'vps' ? (
             <div className="glass-card p-4 space-y-4">
               <p className="text-white font-semibold">VPS Info</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -548,6 +551,11 @@ export default function AdminProducts() {
                 <Field label="Location" value={form.vpsInfo.location} onChange={(v) => setForm((s) => ({ ...s, vpsInfo: { ...s.vpsInfo, location: v } }))} />
               </div>
               <Field label="Uptime" value={form.vpsInfo.uptime} onChange={(v) => setForm((s) => ({ ...s, vpsInfo: { ...s.vpsInfo, uptime: v } }))} />
+            </div>
+          ) : (
+            <div className="glass-card p-4 text-center text-white/50">
+              <p>Sản phẩm Treo Thuê không yêu cầu thông tin cấu hình phức tạp.</p>
+              <p>Vui lòng ghi rõ thông tin trong phần "Mô tả" phía trên.</p>
             </div>
           )}
 

@@ -1,6 +1,6 @@
 // src/pages/admin/AdminQuestions.jsx - Quản lý câu hỏi Trivia + Import JSON
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { triviaAPI } from '../../services/api';
+import { triviaAPI, adminAPI } from '../../services/api';
 import { toast } from 'react-toastify';
 import {
   FiUpload, FiPlus, FiTrash2, FiRefreshCw, FiBookOpen, FiFileText,
@@ -48,23 +48,27 @@ export default function AdminQuestions() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalQuestions, setTotalQuestions] = useState(0);
   const fileRef = useRef(null);
+  const [triviaEnabled, setTriviaEnabled] = useState(true);
+  const [settingLoading, setSettingLoading] = useState(false);
 
   const fetchData = useCallback(async (p = 1) => {
     setLoading(true);
     try {
-      const [topicsRes, questionsRes] = await Promise.all([
+      const [topicsRes, questionsRes, settingsRes] = await Promise.all([
         triviaAPI.getTopicsAdmin(),
         triviaAPI.getQuestions({
           page: p,
           limit: 15,
           ...(filterTopic ? { topicId: filterTopic } : {}),
         }),
+        adminAPI.getSettings().catch(() => ({ data: { data: { trivia_enabled: true } } })),
       ]);
       setTopics(topicsRes.data.data || []);
       setQuestions(questionsRes.data.data || []);
       setTotalPages(questionsRes.data.pagination?.totalPages || 1);
       setPage(questionsRes.data.pagination?.page || 1);
       setTotalQuestions(questionsRes.data.pagination?.total || 0);
+      setTriviaEnabled(settingsRes.data?.data?.trivia_enabled ?? true);
     } catch {
       toast.error('Không tải được dữ liệu câu hỏi');
     } finally {
@@ -157,6 +161,20 @@ export default function AdminQuestions() {
     }
   };
 
+  const handleToggleTrivia = async () => {
+    setSettingLoading(true);
+    try {
+      const newVal = !triviaEnabled;
+      await adminAPI.updateSetting('trivia_enabled', newVal);
+      setTriviaEnabled(newVal);
+      toast.success(`Đã ${newVal ? 'BẬT' : 'TẮT'} trò chơi Đố Vui Sinh Tồn`);
+    } catch (err) {
+      toast.error('Không thể thay đổi cài đặt');
+    } finally {
+      setSettingLoading(false);
+    }
+  };
+
   const sampleJson = JSON.stringify(
     [
       {
@@ -180,6 +198,25 @@ export default function AdminQuestions() {
           </h1>
           <p className="text-white/50 text-sm mt-1">Quản lý đề tài & câu hỏi trắc nghiệm</p>
         </div>
+
+        <div className="glass-card px-4 py-2 flex items-center gap-3">
+          <div>
+            <p className="text-xs font-bold text-white">Trạng thái Game</p>
+            <p className="text-[10px] text-white/40">{triviaEnabled ? 'Đang bật' : 'Đã tắt'}</p>
+          </div>
+          <button
+            onClick={handleToggleTrivia}
+            disabled={settingLoading}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              triviaEnabled ? 'bg-green-500' : 'bg-white/10'
+            }`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              triviaEnabled ? 'translate-x-6' : 'translate-x-1'
+            }`} />
+          </button>
+        </div>
+
         <div className="flex flex-wrap gap-2">
           <button
             type="button"

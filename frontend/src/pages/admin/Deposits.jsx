@@ -57,7 +57,7 @@ export default function AdminDeposits() {
   const fetchData = async (p = 1) => {
     setLoading(true);
     try {
-      const [depositsRes, statsRes] = await Promise.all([
+      const [depositsRes, statsRes, settingsRes] = await Promise.all([
         adminAPI.getAllDeposits({
           page: p,
           limit: 10,

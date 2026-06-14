@@ -33,6 +33,10 @@ const bauCuaRoomSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
+    adminMode: {
+      type: String,
+      default: 'auto',
+    },
     // Thống kê phòng
     totalRounds: { type: Number, default: 0 },
     totalVolume: { type: Number, default: 0 }, // Tổng tiền cược qua đây

@@ -1,5 +1,5 @@
 // src/pages/Login.jsx - Trang đăng nhập
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
@@ -90,7 +90,7 @@ const Login = () => {
                   type="text"
                   value={form.email}
                   onChange={(e) => { setForm({ ...form, email: e.target.value }); setErrors({ ...errors, email: '' }); }}
-                  placeholder="nguyenduong hoặc example@email.com"
+                  placeholder="taikhoan hoặc example@email.com"
                   className={`input-field pl-11 ${errors.email ? 'border-red-500/50' : ''}`}
                 />
               </div>

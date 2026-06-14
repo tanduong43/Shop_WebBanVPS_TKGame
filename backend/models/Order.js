@@ -13,7 +13,27 @@ const orderItemSchema = new mongoose.Schema({
   type: { type: String, required: true },       // Snapshot loại sản phẩm
   price: { type: Number, required: true },      // Snapshot giá tại thời điểm đặt
   quantity: { type: Number, required: true, min: 1 },
-}, { _id: false });
+  // Snapshot cấu hình sản phẩm
+  vpsInfo: { type: mongoose.Schema.Types.Mixed },
+  accountInfo: { type: mongoose.Schema.Types.Mixed },
+  // Thông tin quản lý dịch vụ do Admin cấp phát
+  credentials: {
+    ip: { type: String, default: '' },
+    username: { type: String, default: '' },
+    password: { type: String, default: '' },
+    server: { type: String, default: '' },
+    createdAt: { type: Date, default: null },
+    expiresAt: { type: Date, default: null },
+    cycle: { type: String, default: '1 Tháng' }
+  },
+  // Thông tin khách hàng tự cung cấp (Dành cho dịch vụ Treo Thuê)
+  userProvidedData: {
+    username: { type: String, default: '' },
+    password: { type: String, default: '' },
+    server: { type: String, default: '' },
+    note: { type: String, default: '' }
+  }
+}, { _id: true }); // Bật _id cho orderItem để có ID định danh khi Admin cập nhật riêng lẻ từng item
 
 const orderSchema = new mongoose.Schema(
   {

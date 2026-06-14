@@ -1,8 +1,9 @@
 // src/pages/Games.jsx - Trung Tâm Trò Chơi
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { bauCuaAPI, wheelAPI } from '../services/api';
+import { Link, Navigate } from 'react-router-dom';
+import { bauCuaAPI, wheelAPI, publicAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 import {
   FiZap, FiUsers, FiLock, FiChevronRight, FiPlayCircle,
   FiDollarSign, FiActivity,
@@ -105,20 +106,30 @@ function WheelCard({ wheel }) {
 
 export default function Games() {
   const { isAuthenticated } = useAuth();
+  const { settings } = useSettings();
+  const [activeTab, setActiveTab] = useState('baucua'); // 'baucua' | 'wheel' | 'trivia'
+
   const [bauCuaRooms, setBauCuaRooms] = useState([]);
   const [wheels, setWheels] = useState([]);
+  const [triviaEnabled, setTriviaEnabled] = useState(true);
+  const [wheelEnabled, setWheelEnabled] = useState(true);
+  const [baucuaEnabled, setBaucuaEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [roomsRes, wheelsRes] = await Promise.all([
+        const [roomsRes, wheelsRes, settingsRes] = await Promise.all([
           bauCuaAPI.getRooms(),
           wheelAPI.getAll(),
+          publicAPI.getSettings().catch(() => ({ data: { data: { trivia_enabled: true, wheel_enabled: true, baucua_enabled: true } } }))
         ]);
         setBauCuaRooms(roomsRes.data.data);
         setWheels(wheelsRes.data.data);
+        setTriviaEnabled(settingsRes.data?.data?.trivia_enabled ?? true);
+        setWheelEnabled(settingsRes.data?.data?.wheel_enabled ?? true);
+        setBaucuaEnabled(settingsRes.data?.data?.baucua_enabled ?? true);
       } catch (err) {
         console.error('Lỗi tải danh sách game:', err);
       } finally {
@@ -127,6 +138,10 @@ export default function Games() {
     };
     fetchData();
   }, []);
+
+  if (settings.games_enabled === false) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="min-h-screen pt-24 pb-16 relative overflow-hidden">
@@ -176,10 +191,11 @@ export default function Games() {
         ) : (
           <>
             {/* BẦU CUA TÔM CÁ */}
-            <section className="mb-10">
-              <div className="flex items-center gap-3 mb-5">
-                <span className="text-2xl">🎲</span>
-                <div>
+            {baucuaEnabled && (
+              <section className="mb-10">
+                <div className="flex items-center gap-3 mb-5">
+                  <span className="text-2xl">🎲</span>
+                  <div>
                   <h2 className="text-lg font-black text-white">Bầu Cua Tôm Cá</h2>
                   <p className="text-xs text-white/40">Real-time với thuật toán thông minh</p>
                 </div>
@@ -199,39 +215,43 @@ export default function Games() {
                 </div>
               )}
             </section>
+            )}
 
             {/* ĐỐ VUI SINH TỒN */}
-            <section className="mb-10">
-              <div className="flex items-center gap-3 mb-5">
-                <span className="text-2xl">🧠</span>
-                <div>
-                  <h2 className="text-lg font-black text-white">Đố Vui Sinh Tồn</h2>
-                  <p className="text-xs text-white/40">Battle Royale trắc nghiệm — Tự tạo phòng, 2-10 người</p>
+            {triviaEnabled && (
+              <section className="mb-10">
+                <div className="flex items-center gap-3 mb-5">
+                  <span className="text-2xl">🧠</span>
+                  <div>
+                    <h2 className="text-lg font-black text-white">Đố Vui Sinh Tồn</h2>
+                    <p className="text-xs text-white/40">Battle Royale trắc nghiệm — Tự tạo phòng, 2-10 người</p>
+                  </div>
                 </div>
-              </div>
 
-              <Link
-                to="/games/trivia"
-                className="group relative overflow-hidden p-6 rounded-2xl border border-white/8 bg-gradient-to-br from-emerald-500/5 to-cyan-600/5 hover:border-emerald-500/40 transition-all duration-300 flex flex-col sm:flex-row items-center gap-4"
-              >
-                <span className="text-4xl">⚔️</span>
-                <div className="flex-1 text-center sm:text-left">
-                  <h3 className="text-white font-black">Trivia Battle Royale</h3>
-                  <p className="text-white/40 text-sm mt-1">
-                    100 HP · 10 câu · Top 1 nhanh nhất được khiên · Sai trừ 15 HP
-                  </p>
-                </div>
-                <span className="flex items-center gap-1 text-sm font-bold text-emerald-400 group-hover:text-emerald-300">
-                  {isAuthenticated ? 'Chơi ngay' : 'Đăng nhập để chơi'} <FiChevronRight />
-                </span>
-              </Link>
-            </section>
+                <Link
+                  to="/games/trivia"
+                  className="group relative overflow-hidden p-6 rounded-2xl border border-white/8 bg-gradient-to-br from-emerald-500/5 to-cyan-600/5 hover:border-emerald-500/40 transition-all duration-300 flex flex-col sm:flex-row items-center gap-4"
+                >
+                  <span className="text-4xl">⚔️</span>
+                  <div className="flex-1 text-center sm:text-left">
+                    <h3 className="text-white font-black">Trivia Battle Royale</h3>
+                    <p className="text-white/40 text-sm mt-1">
+                      100 HP · 10 câu · Top 1 nhanh nhất được khiên · Sai trừ 15 HP
+                    </p>
+                  </div>
+                  <span className="flex items-center gap-1 text-sm font-bold text-emerald-400 group-hover:text-emerald-300">
+                    {isAuthenticated ? 'Chơi ngay' : 'Đăng nhập để chơi'} <FiChevronRight />
+                  </span>
+                </Link>
+              </section>
+            )}
 
             {/* VÒNG QUAY MAY MẮN */}
-            <section>
-              <div className="flex items-center gap-3 mb-5">
-                <span className="text-2xl">🎡</span>
-                <div>
+            {wheelEnabled && (
+              <section>
+                <div className="flex items-center gap-3 mb-5">
+                  <span className="text-2xl">🎡</span>
+                  <div>
                   <h2 className="text-lg font-black text-white">Vòng Quay May Mắn</h2>
                   <p className="text-xs text-white/40">Quay thưởng, trúng phần quà hấp dẫn</p>
                 </div>
@@ -254,6 +274,7 @@ export default function Games() {
                 </div>
               )}
             </section>
+            )}
           </>
         )}
       </div>

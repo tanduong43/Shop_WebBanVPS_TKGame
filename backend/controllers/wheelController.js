@@ -106,11 +106,19 @@ const spinWheel = async (req, res, next) => {
       winningPrize = availablePrizes[availablePrizes.length - 1];
     }
 
-    // 5. THANH TOÁN: Trừ tiền User
-    const balanceBefore = user.balance;
-    const balanceAfter = balanceBefore - wheel.price;
-    user.balance = balanceAfter;
-    await user.save();
+    // 5. THANH TOÁN: Trừ tiền User bằng Atomic Update
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: user._id, balance: { $gte: wheel.price } },
+      { $inc: { balance: -wheel.price } },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return errorResponse(res, 'Số dư không đủ hoặc đã bị trừ từ giao dịch khác!', 400);
+    }
+
+    const balanceBefore = updatedUser.balance + wheel.price;
+    const balanceAfter = updatedUser.balance;
 
     // 6. CẬP NHẬT KHO: Giảm stock của phần quà trúng giải (nếu không phải vô hạn)
     if (winningPrize.stock > 0) {

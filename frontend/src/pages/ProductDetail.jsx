@@ -1,7 +1,7 @@
 // src/pages/ProductDetail.jsx - Trang chi tiết sản phẩm
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { productAPI } from '../services/api';
+import { productAPI, orderAPI } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
@@ -31,7 +31,7 @@ const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart, isInCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, updateBalance } = useAuth();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
@@ -62,6 +62,30 @@ const ProductDetail = () => {
       return;
     }
     addToCart(product, quantity);
+  };
+
+  const handleBuyNow = async () => {
+    if (!isAuthenticated) {
+      toast.warn('Vui lòng đăng nhập để mua hàng!');
+      navigate('/login');
+      return;
+    }
+    
+    try {
+      const res = await orderAPI.create({
+        items: [{ productId: product._id, quantity }]
+      });
+      if (res.data?.data?.newBalance !== undefined) {
+        updateBalance(res.data.data.newBalance);
+      }
+      toast.success(res?.data?.message || 'Thanh toán thành công!', { autoClose: 2000 });
+      navigate('/orders');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Thanh toán thất bại, vui lòng thử lại');
+      if (err.response?.data?.message?.includes('Số dư không đủ')) {
+        navigate('/deposit');
+      }
+    }
   };
 
   if (loading) return (
@@ -176,19 +200,29 @@ const ProductDetail = () => {
             )}
 
             {/* Add to cart btn */}
-            <button
-              onClick={handleAddToCart}
-              disabled={product.stock === 0}
-              className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold transition-all ${
-                product.stock === 0 ? 'bg-white/5 text-white/30 cursor-not-allowed'
-                : inCart ? 'bg-green-500/20 border border-green-500/30 text-green-400 hover:bg-green-500/30'
-                : 'btn-primary'
-              }`}
-            >
-              {product.stock === 0 ? 'Hết hàng'
-               : inCart ? <><FiCheck /> Đã thêm vào giỏ</>
-               : <><FiShoppingCart /> Thêm vào giỏ hàng</>}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={handleAddToCart}
+                disabled={product.stock === 0}
+                className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold transition-all ${
+                  product.stock === 0 ? 'bg-white/5 text-white/30 cursor-not-allowed'
+                  : inCart ? 'bg-green-500/20 border border-green-500/30 text-green-400 hover:bg-green-500/30'
+                  : 'bg-white/5 hover:bg-white/10 text-white/80 border border-white/10'
+                }`}
+              >
+                {product.stock === 0 ? 'Hết hàng'
+                 : inCart ? <><FiCheck /> Đã thêm giỏ</>
+                 : <><FiShoppingCart /> Thêm vào giỏ</>}
+              </button>
+              {product.stock > 0 && (
+                <button
+                  onClick={handleBuyNow}
+                  className="flex-1 btn-primary flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold transition-all"
+                >
+                  Mua ngay
+                </button>
+              )}
+            </div>
             {inCart && (
               <Link to="/cart" className="block text-center mt-3 text-primary-400 hover:text-primary-300 text-sm transition-colors">
                 Đến giỏ hàng →

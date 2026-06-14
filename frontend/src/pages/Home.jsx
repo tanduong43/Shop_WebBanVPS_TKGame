@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { productAPI } from '../services/api';
+import { useSettings } from '../context/SettingsContext';
 import ProductCard from '../components/ProductCard';
 import SkeletonCard from '../components/SkeletonCard';
 import TiltCard from '../components/TiltCard';
@@ -80,6 +81,7 @@ const FeatureCard = ({ icon: Icon, title, description, color }) => (
 const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { settings } = useSettings();
 
   useEffect(() => {
     const fetchFeatured = async () => {
@@ -162,6 +164,72 @@ const Home = () => {
         </div>
       </section>
 
+      {/* ── Treo Thuê Section ─────────────────────────────────────────────────── */}
+      {settings.boosting_enabled !== false && (
+        <section className="py-16 section-container">
+          <div className="relative rounded-3xl overflow-hidden glass-card p-8 md:p-12 border border-primary-500/20">
+          {/* Background Effects */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/10 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-accent-500/10 blur-3xl rounded-full -translate-x-1/2 translate-y-1/2" />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center relative z-10">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-sm font-bold mb-4 border border-red-500/20">
+                <FiZap /> HOT Dịch Vụ
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 leading-tight">
+                Dịch Vụ <span className="gradient-text">Treo Thuê</span> Giá Rẻ 24/7
+              </h2>
+              <p className="text-white/60 mb-6 leading-relaxed">
+                Bạn không có thời gian cày cuốc? Máy tính không đủ mạnh để treo nhiều tab? Giải pháp treo game hộ, cày cấp, farm đồ siêu tốc, an toàn tuyệt đối với chi phí cực kỳ sinh viên.
+              </p>
+              
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-center gap-3 text-white/80">
+                  <FiShield className="text-primary-400 flex-shrink-0" />
+                  <span>Bảo mật tài khoản 100%, có hợp đồng đàng hoàng</span>
+                </li>
+                <li className="flex items-center gap-3 text-white/80">
+                  <FiServer className="text-primary-400 flex-shrink-0" />
+                  <span>Hệ thống VPS riêng biệt, không giật lag 24/24</span>
+                </li>
+                <li className="flex items-center gap-3 text-white/80">
+                  <FiStar className="text-primary-400 flex-shrink-0" />
+                  <span>Giá chỉ từ cốc trà đá mỗi ngày</span>
+                </li>
+              </ul>
+              
+              <Link to="/boosting" className="btn-primary inline-flex items-center gap-2 px-6 py-3">
+                Xem Bảng Giá Ngay <FiArrowRight />
+              </Link>
+            </div>
+            
+            <div className="relative">
+              {/* Graphic/Mockup representing Treo Thuê */}
+              <div className="aspect-square sm:aspect-video md:aspect-square lg:aspect-video rounded-2xl bg-dark-900 border border-white/10 overflow-hidden relative shadow-2xl flex flex-col">
+                <div className="bg-dark-800 p-3 border-b border-white/5 flex gap-2 items-center">
+                  <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                  <div className="w-3 h-3 rounded-full bg-green-500/80" />
+                  <span className="text-[10px] text-white/30 ml-2 font-mono">Server_Node_01_Running...</span>
+                </div>
+                <div className="p-4 flex-1 font-mono text-[11px] sm:text-xs text-green-400 leading-relaxed overflow-hidden relative">
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent to-dark-900/90 z-10" />
+                  <p>{`> Initializing game client... OK`}</p>
+                  <p>{`> Connecting to server: Asia-01... SUCCESS`}</p>
+                  <p>{`> Loading character data... OK`}</p>
+                  <p>{`> Starting auto-farm module...`}</p>
+                  <p className="text-white/50 animate-pulse">{`> Farming in progress... (Time elapsed: 48:12:05)`}</p>
+                  <p className="text-accent-400 mt-2">{`> [Loot] +1 Legendary Sword found!`}</p>
+                  <p className="text-accent-400">{`> [Loot] +50,000 Gold`}</p>
+                  <p className="text-primary-400 mt-2">{`> System stable. CPU: 12% RAM: 450MB`}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    )}
       {/* ── Featured Products ─────────────────────────────────────────────── */}
       <section className="py-16 section-container">
         <div className="flex items-center justify-between mb-10">

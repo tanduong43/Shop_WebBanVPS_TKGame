@@ -1,7 +1,10 @@
 // controllers/orderController.js - Quản lý đơn hàng
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const Transaction = require('../models/Transaction');
+const User = require('../models/User'); // Import User if needed to ensure we can update user properly
 const { successResponse, errorResponse, paginatedResponse } = require('../utils/apiResponse');
+const { sendAdminNewOrderEmail } = require('../utils/sendEmail');
 
 /**
  * Tạo nội dung tin nhắn Zalo từ đơn hàng
@@ -30,7 +33,9 @@ const buildZaloMessage = (order, user) => {
 const createOrder = async (req, res, next) => {
   try {
     const { items } = req.body; // [{ productId, quantity }]
-    const user = req.user;
+    
+    // Nạp lại user từ DB để có số dư mới nhất thay vì dùng req.user (cache)
+    const user = await User.findById(req.user._id);
 
     // Lấy tất cả sản phẩm trong đơn hàng
     const productIds = items.map((i) => i.productId);
@@ -59,36 +64,56 @@ const createOrder = async (req, res, next) => {
         type: product.type,
         price: product.price,
         quantity: item.quantity,
+        vpsInfo: product.vpsInfo,
+        accountInfo: product.accountInfo,
+        userProvidedData: item.userProvidedData || {},
       };
     });
 
-    // Tạo nội dung Zalo message
-    const tempOrder = { _id: 'pending', items: orderItems, totalPrice };
-    const zaloMessage = buildZaloMessage(tempOrder, user);
+    // Thực hiện trừ tiền bằng cơ chế Atomic để tránh Race Condition
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: user._id, balance: { $gte: totalPrice } },
+      { $inc: { balance: -totalPrice } },
+      { new: true }
+    );
 
-    // Lưu đơn hàng vào DB
+    if (!updatedUser) {
+      return errorResponse(res, 'Số dư không đủ hoặc đã bị trừ từ giao dịch khác!', 400);
+    }
+
+    const balanceBefore = updatedUser.balance + totalPrice;
+    const balanceAfter = updatedUser.balance;
+
+    // Tạo đơn hàng (Chờ xử lý)
     const order = await Order.create({
       userId: user._id,
       items: orderItems,
       totalPrice,
-      zaloMessage,
       contactInfo: { username: user.username, email: user.email },
+      status: 'pending_contact' // Tương đương "Chờ xử lý" trên frontend
     });
 
-    // Cập nhật zaloMessage với orderId thực tế
-    const finalZaloMessage = buildZaloMessage(order, user);
-    order.zaloMessage = finalZaloMessage;
-    await order.save();
+    // Ghi nhận lịch sử giao dịch (Transaction)
+    await Transaction.create({
+      userId: user._id,
+      type: 'purchase',
+      amount: -totalPrice,
+      balanceBefore,
+      balanceAfter: balanceAfter,
+      description: `Thanh toán đơn hàng #${order._id.toString().slice(-8).toUpperCase()}`,
+      referenceId: order._id,
+      referenceModel: 'Order'
+    });
 
-    // Tạo Zalo redirect URL
-    const zaloPhone = process.env.ZALO_PHONE || '0900000000';
-    const encodedMessage = encodeURIComponent(finalZaloMessage);
-    const zaloUrl = `https://zalo.me/${zaloPhone}?text=${encodedMessage}`;
+    // Gửi email thông báo cho Admin
+    sendAdminNewOrderEmail(order, user).catch(err => {
+      console.error('Lỗi khi gửi email thông báo đơn hàng cho admin:', err);
+    });
 
     return successResponse(
       res,
-      { order, zaloUrl },
-      'Đặt hàng thành công! Vui lòng liên hệ admin qua Zalo để xác nhận.',
+      { order, newBalance: balanceAfter },
+      'Thanh toán thành công! Đơn hàng của bạn đang được xử lý.',
       201
     );
   } catch (error) {
@@ -102,18 +127,21 @@ const createOrder = async (req, res, next) => {
  */
 const getMyOrders = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, type } = req.query;
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(parseInt(limit), 50);
     const skip = (pageNum - 1) * limitNum;
 
+    const filter = { userId: req.user._id };
+    if (type) filter['items.type'] = type;
+
     const [orders, total] = await Promise.all([
-      Order.find({ userId: req.user._id })
+      Order.find(filter)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNum)
         .lean(),
-      Order.countDocuments({ userId: req.user._id }),
+      Order.countDocuments(filter),
     ]);
 
     return paginatedResponse(res, orders, {
@@ -131,13 +159,18 @@ const getMyOrders = async (req, res, next) => {
  */
 const getAllOrders = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, status } = req.query;
+    const { page = 1, limit = 20, status, type } = req.query;
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(parseInt(limit), 100);
     const skip = (pageNum - 1) * limitNum;
 
     const filter = {};
     if (status) filter.status = status;
+    if (type) {
+      filter['items.type'] = type;
+    } else {
+      filter['items.type'] = { $ne: 'boosting' };
+    }
 
     const [orders, total] = await Promise.all([
       Order.find(filter)
@@ -164,19 +197,60 @@ const getAllOrders = async (req, res, next) => {
  */
 const updateOrderStatus = async (req, res, next) => {
   try {
-    const { status, adminNote } = req.body;
+    const { status, adminNote, itemsCredentials } = req.body;
     const update = { status };
     if (adminNote !== undefined) update.adminNote = adminNote;
 
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      update,
-      { new: true, runValidators: true }
-    ).populate('userId', 'username email');
-
+    const order = await Order.findById(req.params.id);
     if (!order) {
       return errorResponse(res, 'Không tìm thấy đơn hàng', 404);
     }
+
+    order.status = status;
+    if (adminNote !== undefined) order.adminNote = adminNote;
+
+    // Tự động tính ngày hết hạn cho các đơn Treo Thuê khi chuyển sang Đang cày (processing)
+    if (status === 'processing') {
+      order.items.forEach(item => {
+        if (item.type === 'boosting') {
+          // Nếu chưa có expiresAt thì mới set (để tránh bị reset khi admin ấn cập nhật lại)
+          if (!item.credentials.expiresAt) {
+            const months = item.quantity || 1; // quantity chính là số tháng khách mua
+            const expiresDate = new Date();
+            expiresDate.setMonth(expiresDate.getMonth() + months);
+            item.credentials.expiresAt = expiresDate;
+          }
+        }
+      });
+      order.markModified('items');
+    }
+
+    // Cập nhật credentials cho từng sản phẩm trong đơn hàng (nếu có truyền lên)
+    if (itemsCredentials && Array.isArray(itemsCredentials)) {
+      itemsCredentials.forEach((cred) => {
+        const item = order.items.id(cred.itemId);
+        if (item) {
+          // Gán từng field để Mongoose tự bắt thay đổi, hoặc dùng markModified
+          item.credentials.ip = cred.credentials.ip || item.credentials.ip;
+          item.credentials.username = cred.credentials.username || item.credentials.username;
+          item.credentials.password = cred.credentials.password || item.credentials.password;
+          item.credentials.server = cred.credentials.server || item.credentials.server;
+          item.credentials.expiresAt = cred.credentials.expiresAt || item.credentials.expiresAt;
+          item.credentials.cycle = cred.credentials.cycle || item.credentials.cycle;
+
+          // Nếu có thiết lập IP hoặc username mà chưa có createdAt, thì coi như vừa tạo
+          if (!item.credentials.createdAt && (cred.credentials.ip || cred.credentials.username)) {
+            item.credentials.createdAt = new Date();
+          }
+        }
+      });
+      order.markModified('items');
+    }
+
+    await order.save();
+    
+    // Nạp lại thông tin user để trả về
+    await order.populate('userId', 'username email');
 
     return successResponse(res, order, 'Cập nhật trạng thái đơn hàng thành công');
   } catch (error) {

@@ -1,15 +1,16 @@
 // src/pages/admin/AdminWheels.jsx - Trang quản lý Vòng quay & Phá Cưa dành cho Admin
 import { useState, useEffect } from 'react';
-import { adminWheelAPI, adminBauCuaAPI } from '../../services/api';
+import { adminWheelAPI, adminBauCuaAPI, adminAPI } from '../../services/api';
 import { toast } from 'react-toastify';
 import {
-  FiSettings, FiPlusCircle, FiEdit2, FiTrash2, FiInfo,
-  FiAward, FiDollarSign, FiPercent, FiLayers, FiCheck, FiAlertTriangle,
+  FiSettings, FiPlusCircle, FiEdit2, FiTrash2,
+  FiAward, FiPercent, FiLayers, FiCheck, FiAlertTriangle,
   FiPlay, FiPause, FiGrid, FiTrendingUp, FiSearch,
 } from 'react-icons/fi';
+import AdminQuestions from './AdminQuestions';
+import AdminSpinHistory from './AdminSpinHistory';
 
-// ─── BầU CUA ROOM MANAGEMENT PANEL ────────────────────────────────────────────
-function BauCuaRoomsPanel() {
+function BauCuaRoomsPanel({ baucuaEnabled, handleToggleBaucua, settingLoading }) {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -138,14 +139,33 @@ function BauCuaRoomsPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-black text-white">Quản Lý Phòng Bầu Cua</h2>
           <p className="text-white/40 text-xs mt-1">Tạo và quản lý các phòng chơi Bầu Cua Tôm Cá real-time</p>
         </div>
-        <button onClick={() => openModal(null)} className="btn-primary py-2 px-4 text-xs flex items-center gap-1.5">
-          <FiPlusCircle /> Tạo Phòng Mới
-        </button>
+        <div className="flex gap-3 items-center">
+          <div className="glass-card px-4 py-2 flex items-center gap-3">
+            <div>
+              <p className="text-xs font-bold text-white">Trạng thái Game</p>
+              <p className="text-[10px] text-white/40">{baucuaEnabled ? 'Đang bật' : 'Đã tắt'}</p>
+            </div>
+            <button
+              onClick={handleToggleBaucua}
+              disabled={settingLoading}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                baucuaEnabled ? 'bg-green-500' : 'bg-white/10'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                baucuaEnabled ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+          <button onClick={() => openModal(null)} className="btn-primary py-2 px-4 text-xs flex items-center gap-1.5 h-[42px]">
+            <FiPlusCircle /> Tạo Phòng Mới
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -431,6 +451,10 @@ export default function AdminWheels() {
   const [prizes, setPrizes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [prizesLoading, setPrizesLoading] = useState(false);
+  const [wheelEnabled, setWheelEnabled] = useState(true);
+  const [baucuaEnabled, setBaucuaEnabled] = useState(true);
+  const [settingLoading, setSettingLoading] = useState(false);
+  const [wheelSubTab, setWheelSubTab] = useState('config'); // 'config' | 'history'
 
   // Modals state
   const [showWheelModal, setShowWheelModal] = useState(false);
@@ -482,7 +506,39 @@ export default function AdminWheels() {
 
   useEffect(() => {
     fetchWheels(true);
+    adminAPI.getSettings().then(res => {
+      setWheelEnabled(res.data.data?.wheel_enabled ?? true);
+      setBaucuaEnabled(res.data.data?.baucua_enabled ?? true);
+    }).catch(() => {});
   }, []);
+
+  const handleToggleWheel = async () => {
+    setSettingLoading(true);
+    try {
+      const newVal = !wheelEnabled;
+      await adminAPI.updateSetting('wheel_enabled', newVal);
+      setWheelEnabled(newVal);
+      toast.success(`Đã ${newVal ? 'BẬT' : 'TẮT'} trò chơi Vòng Quay`);
+    } catch (err) {
+      toast.error('Không thể thay đổi cài đặt');
+    } finally {
+      setSettingLoading(false);
+    }
+  };
+
+  const handleToggleBaucua = async () => {
+    setSettingLoading(true);
+    try {
+      const newVal = !baucuaEnabled;
+      await adminAPI.updateSetting('baucua_enabled', newVal);
+      setBaucuaEnabled(newVal);
+      toast.success(`Đã ${newVal ? 'BẬT' : 'TẮT'} trò chơi Bầu Cua`);
+    } catch (err) {
+      toast.error('Không thể thay đổi cài đặt');
+    } finally {
+      setSettingLoading(false);
+    }
+  };
 
   // ── XỬ LÝ CRUD VÒNG QUAY ──
   const openWheelModal = (wheel = null) => {
@@ -618,11 +674,11 @@ export default function AdminWheels() {
       
       {/* HEADER + TABS */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Quản Lý Games & Vòng Quay</h1>
-        <p className="text-white/40 text-sm mt-1">Quản lý Vòng Quay May Mắn và các phòng Bầu Cua Tôm Cá real-time</p>
+        <h1 className="text-2xl font-bold text-white">Quản Lý Game</h1>
+        <p className="text-white/40 text-sm mt-1">Quản lý Vòng Quay, Bầu Cua Tôm Cá và Đố Vui Sinh Tồn</p>
 
         {/* TAB BAR */}
-        <div className="flex gap-2 mt-4 border-b border-white/5 pb-4">
+        <div className="flex gap-2 mt-4 border-b border-white/5 pb-4 overflow-x-auto whitespace-nowrap">
           <button
             onClick={() => setActiveTab('wheel')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
@@ -643,20 +699,83 @@ export default function AdminWheels() {
           >
             🎲 Bầu Cua Tôm Cá
           </button>
+          <button
+            onClick={() => setActiveTab('trivia')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+              activeTab === 'trivia'
+                ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
+                : 'text-white/40 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            🧠 Đố Vui Sinh Tồn
+          </button>
         </div>
       </div>
 
+      {/* TRIVIA PANEL */}
+      {activeTab === 'trivia' && (
+        <div className="pt-2">
+          <AdminQuestions />
+        </div>
+      )}
+
+      {/* WHEEL HISTORY PANEL */}
+      {activeTab === 'wheel_history' && (
+        <div className="pt-2">
+          <AdminSpinHistory />
+        </div>
+      )}
+
       {/* BẦU CUA PANEL */}
-      {activeTab === 'baucua' && <BauCuaRoomsPanel />}
+      {activeTab === 'baucua' && (
+        <BauCuaRoomsPanel 
+          baucuaEnabled={baucuaEnabled} 
+          handleToggleBaucua={handleToggleBaucua} 
+          settingLoading={settingLoading} 
+        />
+      )}
 
       {/* WHEEL PANEL */}
       {activeTab === 'wheel' && (
-        <>
-          {/* Nút Tạo Vòng Quay */}
-          <div className="flex justify-end">
+        <div className="space-y-4">
+          <div className="flex gap-2 bg-dark-800 p-1 rounded-xl border border-white/5 w-fit">
+            <button 
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${wheelSubTab === 'config' ? 'bg-primary-500/20 text-primary-400' : 'text-white/50 hover:text-white'}`}
+              onClick={() => setWheelSubTab('config')}
+            >
+              1. Quản Lý Vòng Quay
+            </button>
+            <button 
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${wheelSubTab === 'history' ? 'bg-primary-500/20 text-primary-400' : 'text-white/50 hover:text-white'}`}
+              onClick={() => setWheelSubTab('history')}
+            >
+              2. Lịch Sử Trúng Thưởng
+            </button>
+          </div>
+
+          {wheelSubTab === 'config' ? (
+            <>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4 mt-4">
+                <div className="glass-card px-4 py-2 flex items-center gap-3">
+                  <div>
+                    <p className="text-xs font-bold text-white">Trạng thái Game</p>
+                    <p className="text-[10px] text-white/40">{wheelEnabled ? 'Đang bật' : 'Đã tắt'}</p>
+                  </div>
+                  <button
+                    onClick={handleToggleWheel}
+                    disabled={settingLoading}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  wheelEnabled ? 'bg-green-500' : 'bg-white/10'
+                }`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  wheelEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+            </div>
             <button
               onClick={() => openWheelModal(null)}
-              className="btn-primary py-2.5 px-4 text-xs font-bold flex items-center gap-1.5 hover:shadow-glow-primary"
+              className="btn-primary py-2.5 px-4 text-xs font-bold flex items-center gap-1.5 hover:shadow-glow-primary h-[42px]"
             >
               <FiPlusCircle /> Tạo Vòng Quay Mới
             </button>
@@ -1096,6 +1215,12 @@ export default function AdminWheels() {
       )}
 
         </>
+          ) : (
+            <div className="mt-4">
+              <AdminSpinHistory />
+            </div>
+          )}
+        </div>
       )}
 
     </div>

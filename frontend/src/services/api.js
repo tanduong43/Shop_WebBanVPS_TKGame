@@ -170,4 +170,9 @@ export const adminAPI = {
   updateSetting:   (key, value) => api.put('/admin/settings', { key, value }),
 };
 
+// ─── Public API ────────────────────────────────────────────────────────────────────
+export const publicAPI = {
+  getSettings: () => api.get('/settings/public'),
+};
+
 export default api;

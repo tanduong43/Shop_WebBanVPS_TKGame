@@ -1,17 +1,21 @@
 // src/components/Footer.jsx
 import { Link } from 'react-router-dom';
 import { FiFacebook, FiMessageCircle, FiMail, FiShield } from 'react-icons/fi';
-import logo from '../assets/logo.png';
+import { useSettings } from '../context/SettingsContext';
+import defaultLogo from '../assets/logo.png';
 
-const Footer = () => (
-  <footer className="border-t border-white/5 bg-dark-900/50 mt-20">
-    <div className="section-container py-12">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-        {/* Brand */}
-        <div className="col-span-1 md:col-span-2">
-          <Link to="/" className="flex items-center gap-2 mb-4">
-            <img src={logo} alt="DK logo" className="w-9 h-9 rounded-xl object-cover" />
-            <span className="text-xl font-bold gradient-text">DuongKa</span>
+const Footer = () => {
+  const { settings } = useSettings();
+  
+  return (
+    <footer className="border-t border-white/5 bg-dark-900/50 mt-20">
+      <div className="section-container py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          {/* Brand */}
+          <div className="col-span-1 md:col-span-2">
+            <Link to="/" className="flex items-center gap-2 mb-4">
+              <img src={settings.shop_logo || defaultLogo} alt="Logo" className="w-9 h-9 rounded-xl object-cover" />
+              <span className="text-xl font-bold gradient-text">{settings.shop_name || 'DuongKa'}</span>
           </Link>
           <p className="text-white/50 text-sm leading-relaxed max-w-sm">
             Chuyên cung cấp tài khoản game uy tín và VPS chất lượng cao.
@@ -51,7 +55,7 @@ const Footer = () => (
       </div>
 
       <div className="border-t border-white/5 mt-8 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <p className="text-white/30 text-sm">© 2025 DuongKa. All rights reserved.</p>
+        <p className="text-white/30 text-sm">© {new Date().getFullYear()} {settings.shop_name || 'DuongKa'}. All rights reserved.</p>
         <div className="flex items-center gap-2 text-white/30 text-sm">
           <FiShield className="text-green-400" />
           <span>Giao dịch an toàn & bảo mật</span>
@@ -59,6 +63,7 @@ const Footer = () => (
       </div>
     </div>
   </footer>
-);
+  );
+};
 
 export default Footer;

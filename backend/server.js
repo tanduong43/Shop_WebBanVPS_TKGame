@@ -22,8 +22,10 @@ const adminWheelRoutes = require('./routes/adminWheelRoutes'); // Thêm routes v
 const bauCuaRoutes = require('./routes/bauCuaRoutes'); // Bầu Cua user routes
 const adminBauCuaRoutes = require('./routes/adminBauCuaRoutes'); // Bầu Cua admin routes
 const questionRoutes = require('./routes/questionRoutes'); // Trivia questions & topics
+const settingRoutes = require('./routes/settingRoutes'); // Setting routes
 const { initGameEngine } = require('./controllers/bauCuaGameEngine'); // Bầu Cua engine
 const { initTriviaEngine } = require('./controllers/triviaGameEngine'); // Trivia engine
+const { initCronJobs } = require('./cronJobs'); // Cron jobs
 
 const app = express();
 const server = http.createServer(app); // Tạo HTTP Server
@@ -36,6 +38,7 @@ const io = initSocket(server);
 connectDB().then(() => {
   initGameEngine(io);
   initTriviaEngine(io);
+  initCronJobs();
 });
 
 // ─── Security Middlewares ─────────────────────────────────────────────────
@@ -184,6 +187,9 @@ app.use('/api/questions', questionRoutes);
 
 // Admin routes
 app.use('/api/admin', adminRoutes);
+
+// Public settings routes
+app.use('/api/settings', settingRoutes);
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────
 app.use('*', (req, res) => {

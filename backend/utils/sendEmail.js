@@ -85,9 +85,64 @@ const sendAdminNewDepositEmail = async (deposit, user, amount) => {
   }
 };
 
+const sendAdminNewOrderEmail = async (order, user) => {
+  try {
+    const transporter = createMailTransporter();
+    const adminEmail = process.env.ADMIN_EMAIL || normalizeEnv(process.env.EMAIL_USER).toLowerCase();
+
+    // Determine if this order contains any boosting services
+    const isBoosting = order.items.some(item => item.type === 'boosting');
+    const orderType = isBoosting ? 'Dịch vụ Treo Thuê' : 'Tài khoản Game/VPS';
+    const color = isBoosting ? '#ff3366' : '#00d4ff';
+
+    const itemHtml = order.items.map(item => {
+      let detailsHtml = '';
+      if (item.type === 'boosting') {
+        const data = item.userProvidedData || {};
+        detailsHtml = `
+          <ul style="font-size: 14px; color: #ccc; margin-top: 5px;">
+            <li>Tài khoản: ${data.username || 'N/A'}</li>
+            <li>Server: ${data.server || 'N/A'}</li>
+            <li>Thời gian: ${data.months || 1} tháng</li>
+            <li>Ghi chú: ${data.note || 'Không có'}</li>
+          </ul>
+        `;
+      }
+      return `<li style="margin-bottom: 10px;"><strong>${item.name}</strong> x${item.quantity} - ${(item.price * item.quantity).toLocaleString('vi-VN')} VNĐ ${detailsHtml}</li>`;
+    }).join('');
+
+    const mailOptions = {
+      from: normalizeEnv(process.env.EMAIL_USER).toLowerCase(),
+      to: adminEmail,
+      subject: `[Đơn hàng mới] User ${user.username} vừa thanh toán đơn hàng ${orderType}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1a1a2e; color: #fff; border-radius: 10px;">
+          <h2 style="color: ${color}; text-align: center;">Đơn Hàng Mới: ${orderType}</h2>
+          <p style="font-size: 16px;">User <strong>${user.username}</strong> (${user.email}) vừa thanh toán thành công đơn hàng:</p>
+          <div style="background-color: #0d0d1a; padding: 15px; text-align: left; border-radius: 8px; margin: 20px 0;">
+            <ul style="font-size: 16px; color: #00ff88; list-style-type: none; padding-left: 0;">
+              ${itemHtml}
+            </ul>
+            <div style="text-align: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #333;">
+              <span style="font-size: 18px; color: #ffcc00;">Tổng tiền: ${order.totalPrice.toLocaleString('vi-VN')} VNĐ</span>
+            </div>
+          </div>
+          <p style="font-size: 16px;">Vui lòng kiểm tra trên hệ thống quản trị để xử lý nếu cần thiết.</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`📧 Đã gửi email thông báo đơn hàng mới tới Admin (${adminEmail})`);
+  } catch (error) {
+    console.error(`❌ Lỗi gửi email thông báo đơn hàng:`, error.message);
+  }
+};
+
 module.exports = {
   createMailTransporter,
   sendAdminDepositEmail,
   sendAdminNewDepositEmail,
+  sendAdminNewOrderEmail,
   normalizeEnv
 };
