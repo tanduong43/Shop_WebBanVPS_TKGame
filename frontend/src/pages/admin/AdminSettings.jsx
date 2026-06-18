@@ -12,15 +12,18 @@ export default function AdminSettings() {
     boosting_enabled: true,
     games_enabled: true,
   });
+  const [initialData, setInitialData] = useState({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setFormData({
+    const data = {
       shop_name: settings.shop_name || '',
       shop_logo: settings.shop_logo || '',
       boosting_enabled: settings.boosting_enabled !== false,
       games_enabled: settings.games_enabled !== false,
-    });
+    };
+    setFormData(data);
+    setInitialData(data);
   }, [settings]);
 
   const handleToggle = (key) => {
@@ -28,15 +31,29 @@ export default function AdminSettings() {
   };
 
   const handleSave = async () => {
+    const promises = [];
+
+    if (formData.shop_name !== initialData.shop_name) {
+      promises.push(adminAPI.updateSetting('shop_name', formData.shop_name));
+    }
+    if (formData.shop_logo !== initialData.shop_logo) {
+      promises.push(adminAPI.updateSetting('shop_logo', formData.shop_logo));
+    }
+    if (formData.boosting_enabled !== initialData.boosting_enabled) {
+      promises.push(adminAPI.updateSetting('boosting_enabled', formData.boosting_enabled));
+    }
+    if (formData.games_enabled !== initialData.games_enabled) {
+      promises.push(adminAPI.updateSetting('games_enabled', formData.games_enabled));
+    }
+
+    if (promises.length === 0) {
+      toast.info('Không có thay đổi nào để lưu');
+      return;
+    }
+
     setSaving(true);
     try {
-      // Gọi API cập nhật từng key
-      await Promise.all([
-        adminAPI.updateSetting('shop_name', formData.shop_name),
-        adminAPI.updateSetting('shop_logo', formData.shop_logo),
-        adminAPI.updateSetting('boosting_enabled', formData.boosting_enabled),
-        adminAPI.updateSetting('games_enabled', formData.games_enabled),
-      ]);
+      await Promise.all(promises);
       toast.success('Đã lưu cấu hình chung!');
       refreshSettings();
     } catch (err) {
