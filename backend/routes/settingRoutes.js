@@ -11,7 +11,10 @@ router.get('/public', async (req, res, next) => {
     ];
     const settings = await SystemSetting.find({ key: { $in: publicKeys } }).lean();
     const settingsObj = settings.reduce((acc, curr) => {
-      acc[curr.key] = curr.value;
+      let val = curr.value;
+      if (val === 'true') val = true;
+      if (val === 'false') val = false;
+      acc[curr.key] = val;
       return acc;
     }, {});
     

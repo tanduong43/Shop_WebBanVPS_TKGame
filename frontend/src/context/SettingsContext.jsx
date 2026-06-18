@@ -20,9 +20,17 @@ export const SettingsProvider = ({ children }) => {
     try {
       const res = await publicAPI.getSettings();
       if (res.data?.data) {
-        setSettings(res.data.data);
-        if (res.data.data.shop_name) {
-          document.title = `${res.data.data.shop_name} - Shop VPS & Tài Khoản Game`;
+        const newData = { ...res.data.data };
+        // Ensure string booleans are converted to actual booleans
+        Object.keys(newData).forEach(key => {
+          if (newData[key] === 'true') newData[key] = true;
+          if (newData[key] === 'false') newData[key] = false;
+        });
+
+        setSettings(prev => ({ ...prev, ...newData }));
+        
+        if (newData.shop_name) {
+          document.title = `${newData.shop_name} - Shop VPS & Tài Khoản Game`;
         }
       }
     } catch (err) {

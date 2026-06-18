@@ -187,7 +187,10 @@ const getSettings = async (req, res, next) => {
     const settings = await SystemSetting.find().lean();
     // Chuyển array thành object key-value cho frontend dễ xài
     const settingsObj = settings.reduce((acc, curr) => {
-      acc[curr.key] = curr.value;
+      let val = curr.value;
+      if (val === 'true') val = true;
+      if (val === 'false') val = false;
+      acc[curr.key] = val;
       return acc;
     }, {});
     
