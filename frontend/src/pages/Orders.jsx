@@ -146,7 +146,7 @@ const OrderCard = ({ order }) => {
 
               {/* Service Config Snapshot */}
               {(item.vpsInfo || item.accountInfo) && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                <div className="flex flex-col gap-2 mt-2">
                   {item.type === 'vps' && item.vpsInfo && (
                     <>
                       <div className="text-xs text-white/40">Hệ điều hành: <span className="text-white/80">{item.vpsInfo.os || 'N/A'}</span></div>
@@ -169,17 +169,17 @@ const OrderCard = ({ order }) => {
                 <div className="mt-3 bg-dark-900/50 rounded-lg p-3 border border-primary-500/20">
                   <h4 className="text-xs font-bold text-primary-400 mb-2 uppercase tracking-widest">Thông tin cấp phát</h4>
                   <div className="space-y-1.5">
-                    {item.credentials.ip && <div className="flex justify-between text-sm"><span className="text-white/50">IP/Host:</span> <span className="font-mono text-white select-all">{item.credentials.ip}</span></div>}
-                    {item.credentials.username && <div className="flex justify-between text-sm"><span className="text-white/50">Tài khoản:</span> <span className="font-mono text-white select-all">{item.credentials.username}</span></div>}
-                    {item.credentials.password && <div className="flex justify-between text-sm"><span className="text-white/50">Mật khẩu:</span> <span className="font-mono text-white select-all">{item.credentials.password}</span></div>}
-                    {item.credentials.server && <div className="flex justify-between text-sm"><span className="text-white/50">Server Game:</span> <span className="font-mono text-white">{item.credentials.server}</span></div>}
+                    {item.credentials.ip && <div className="flex items-center text-sm"><span className="text-white/50 w-32 shrink-0">IP/Host:</span> <span className="font-mono text-white select-all">{item.credentials.ip}</span></div>}
+                    {item.credentials.username && <div className="flex items-center text-sm"><span className="text-white/50 w-32 shrink-0">Tài khoản:</span> <span className="font-mono text-white font-bold select-all">{item.credentials.username}</span></div>}
+                    {item.credentials.password && <div className="flex items-center text-sm"><span className="text-white/50 w-32 shrink-0">Mật khẩu:</span> <span className="font-mono text-white font-bold select-all">{item.credentials.password}</span></div>}
+                    {item.credentials.server && <div className="flex items-center text-sm"><span className="text-white/50 w-32 shrink-0">Server Game:</span> <span className="font-mono text-white">{item.credentials.server}</span></div>}
                     
                     {item.type === 'vps' && (
-                      <>
-                        <div className="flex justify-between text-sm mt-2 pt-2 border-t border-white/5"><span className="text-white/50">Ngày kích hoạt:</span> <span className="text-white/80">{item.credentials.createdAt ? formatDate(item.credentials.createdAt) : 'N/A'}</span></div>
-                        <div className="flex justify-between text-sm"><span className="text-white/50">Chu kỳ:</span> <span className="text-white/80">{item.credentials.cycle || '1 Tháng'}</span></div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-white/50">Ngày hết hạn:</span> 
+                      <div className="mt-2 pt-2 border-t border-white/5 space-y-1.5">
+                        <div className="flex items-center text-sm"><span className="text-white/50 w-32 shrink-0">Ngày kích hoạt:</span> <span className="text-white/80">{item.credentials.createdAt ? formatDate(item.credentials.createdAt) : 'N/A'}</span></div>
+                        <div className="flex items-center text-sm"><span className="text-white/50 w-32 shrink-0">Chu kỳ:</span> <span className="text-white/80">{item.credentials.cycle || '1 Tháng'}</span></div>
+                        <div className="flex items-center text-sm">
+                          <span className="text-white/50 w-32 shrink-0">Ngày hết hạn:</span> 
                           <span className={`font-semibold ${
                             item.credentials.expiresAt && new Date(item.credentials.expiresAt) < new Date() 
                               ? 'text-red-400' 
@@ -190,7 +190,7 @@ const OrderCard = ({ order }) => {
                             {item.credentials.expiresAt ? formatDate(item.credentials.expiresAt) : 'N/A'}
                           </span>
                         </div>
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>

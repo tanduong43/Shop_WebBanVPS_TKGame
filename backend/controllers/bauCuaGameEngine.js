@@ -74,11 +74,23 @@ const BOT_NAMES = [
   'Dylan_Nguyen', 'Nguyen_Duc_Hung', 'TanMinh', 'Diep_Nguyen',
   'BaoHo', 'NgocLy', 'MinhLy', 'CatHa',
   'BichNgoc', 'MinhHa', 'TuanAnh', 'TienLuu',
+  'HoangPhat', 'ThanhThao', 'VanLong', 'QuangHuy',
+  'LanAnh', 'GiaBao', 'TienDat', 'PhuongTrinh'
 ];
 
-function getRandomBots(count) {
-  const shuffled = [...BOT_NAMES].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
+let currentActiveBots = [];
+let lastBotRotationTime = 0;
+
+function getActiveBots() {
+  const now = Date.now();
+  // Xoay tua bot mỗi 5 phút (300,000 ms)
+  if (now - lastBotRotationTime >= 300000 || currentActiveBots.length === 0) {
+    lastBotRotationTime = now;
+    const shuffled = [...BOT_NAMES].sort(() => Math.random() - 0.5);
+    currentActiveBots = shuffled.slice(0, 3);
+    console.log(`🤖 Cập nhật 3 bot chơi mới (xoay tua 5 phút):`, currentActiveBots);
+  }
+  return currentActiveBots;
 }
 
 // ─── THUẬT TOÁN CỐT LÕI ──────────────────────────────────────────────────────
@@ -334,9 +346,7 @@ async function runRound(roomId) {
     emitRoomState(roomId, round, 'waiting');
 
     // 2. BOT ĐẶT CƯỢC NGẪU NHIÊN (trong 15s)
-    const botNames = getRandomBots(
-      BAUCUA_LIMITS.BOT_COUNT_MIN + Math.floor(Math.random() * (BAUCUA_LIMITS.BOT_COUNT_MAX - BAUCUA_LIMITS.BOT_COUNT_MIN + 1))
-    );
+    const botNames = getActiveBots();
     spawnBotBets(round._id, roomId, botNames, BAUCUA_LIMITS.WAITING_SECONDS * 1000);
 
     // 3. CHỜ HẾT THỜI GIAN CƯỢC

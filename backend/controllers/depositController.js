@@ -35,7 +35,7 @@ const createDeposit = async (req, res, next) => {
       return errorResponse(res, 'Chức năng nạp tiền đang được bảo trì. Vui lòng thử lại sau.', 403);
     }
 
-    const { amount, method } = req.body;
+    const { amount } = req.body;
     const userId = req.user._id;
 
     if (!amount || isNaN(amount) || amount < 10000) {

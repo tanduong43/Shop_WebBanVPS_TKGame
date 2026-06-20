@@ -223,43 +223,31 @@ export default function BauCua() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const soundEnabledRef = useRef(soundEnabled);
 
-  const shakeAudioRef = useRef(new Audio('/audio/shake.mp3'));
-  const winAudioRef = useRef(new Audio('/audio/win.mp3'));
-  const betAudioRef = useRef(new Audio('/audio/bet.mp3'));
+  const shakeAudioRef = useRef(null);
+  const winAudioRef = useRef(null);
+  const betAudioRef = useRef(null);
 
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
 
   useEffect(() => {
-    const unlockAudio = () => {
-      // Play a short silence to unlock audio context
-      shakeAudioRef.current.play().then(() => {
-        shakeAudioRef.current.pause();
-        shakeAudioRef.current.currentTime = 0;
-      }).catch(() => {});
+    shakeAudioRef.current = new Audio('/audio/shake.mp3');
+    winAudioRef.current = new Audio('/audio/win.mp3');
+    betAudioRef.current = new Audio('/audio/bet.mp3');
+    
+    // Ép trình duyệt tải sẵn (preload) file âm thanh vào RAM để không bị trễ khi phát
+    shakeAudioRef.current.preload = 'auto';
+    winAudioRef.current.preload = 'auto';
+    betAudioRef.current.preload = 'auto';
 
-      winAudioRef.current.play().then(() => {
-        winAudioRef.current.pause();
-        winAudioRef.current.currentTime = 0;
-      }).catch(() => {});
-
-      betAudioRef.current.play().then(() => {
-        betAudioRef.current.pause();
-        betAudioRef.current.currentTime = 0;
-      }).catch(() => {});
-
-      document.removeEventListener('click', unlockAudio);
-      document.removeEventListener('touchstart', unlockAudio);
-    };
-
-    document.addEventListener('click', unlockAudio);
-    document.addEventListener('touchstart', unlockAudio);
-
-    return () => {
-      document.removeEventListener('click', unlockAudio);
-      document.removeEventListener('touchstart', unlockAudio);
-    };
+    shakeAudioRef.current.load();
+    winAudioRef.current.load();
+    betAudioRef.current.load();
+    
+    shakeAudioRef.current.volume = 0.8;
+    winAudioRef.current.volume = 0.8;
+    betAudioRef.current.volume = 0.8;
   }, []);
 
   // Admin selected mode override state
@@ -466,7 +454,7 @@ export default function BauCua() {
         status: 'rolling',
         rollingEndsAt: new Date(Date.now() + duration).toISOString()
       } : prev);
-      if (soundEnabledRef.current) {
+      if (soundEnabledRef.current && shakeAudioRef.current) {
         shakeAudioRef.current.currentTime = 0;
         shakeAudioRef.current.play().catch(e => console.warn(e));
       }
@@ -486,7 +474,7 @@ export default function BauCua() {
         const totalPayout = myBetsList.reduce((s, b) => s + (b.payout || 0), 0);
         if (myBetsList.length > 0 && totalProfit > 0) {
           setResultPopup({ result: data.result, myProfit: totalProfit, myBets: myBetsList });
-          if (soundEnabledRef.current) {
+          if (soundEnabledRef.current && winAudioRef.current) {
             winAudioRef.current.currentTime = 0;
             winAudioRef.current.play().catch(e => console.warn(e));
           }
@@ -551,7 +539,7 @@ export default function BauCua() {
     setBetLoading(true);
     try {
       await bauCuaAPI.placeBet(roomId, { symbol: symbolKey, amount: betAmount });
-      if (soundEnabled) {
+      if (soundEnabled && betAudioRef.current) {
         betAudioRef.current.currentTime = 0;
         betAudioRef.current.play().catch(e => console.warn(e));
       }
@@ -835,9 +823,10 @@ export default function BauCua() {
                   const appearances = symResult ? diceResult.filter(r => r === sym.key).length : 0;
                   const isWinner = symResult && appearances > 0;
                   const myBetAmt = myBets[sym.key] || 0;
-                  const totalBetAmt = (roundState?.bets || [])
-                    .filter(b => b.symbol === sym.key)
-                    .reduce((sum, b) => sum + b.amount, 0);
+                  const allBets = (roundState?.bets || []).filter(b => b.symbol === sym.key);
+                  const totalBetAmt = allBets.reduce((sum, b) => sum + b.amount, 0);
+                  const customerBetAmt = allBets.filter(b => !b.isBot).reduce((sum, b) => sum + b.amount, 0);
+                  const botBetAmt = allBets.filter(b => b.isBot).reduce((sum, b) => sum + b.amount, 0);
                   const canBet = roundState?.status === 'waiting' && isAuthenticated;
 
                   // CSS dynamic classes for high fidelity display
@@ -873,10 +862,25 @@ export default function BauCua() {
                       )}
                       <span className="text-3xl">{sym.emoji}</span>
                       <span className="text-[11px] font-bold text-white">{sym.label}</span>
-                      {totalBetAmt > 0 && (
-                        <span className="text-[9px] text-white/50">
-                          Tổng: {totalBetAmt.toLocaleString()}đ
-                        </span>
+                      {user?.role === 'admin' ? (
+                        <>
+                          {customerBetAmt > 0 && (
+                            <span className="text-[9px] font-bold text-sky-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                              Khách: {customerBetAmt.toLocaleString()}đ
+                            </span>
+                          )}
+                          {botBetAmt > 0 && (
+                            <span className="text-[9px] text-white/40">
+                              Bot: {botBetAmt.toLocaleString()}đ
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        totalBetAmt > 0 && (
+                          <span className="text-[9px] text-white/50">
+                            Tổng: {totalBetAmt.toLocaleString()}đ
+                          </span>
+                        )
                       )}
                       {myBetAmt > 0 && (
                         <span className="text-[9px] font-bold text-amber-400">
@@ -915,7 +919,7 @@ export default function BauCua() {
                         <span className="text-base">{sym?.emoji || '?'}</span>
                         <div className="flex-1 min-w-0">
                           <p className={`font-bold truncate ${b.isBot ? 'text-white/30' : isMe ? 'text-amber-400' : 'text-white/70'}`}>
-                            {b.isBot ? `🤖 ${b.username}` : isMe ? '⭐ Bạn' : b.username}
+                            {isMe ? '⭐ Bạn' : b.username}
                           </p>
                           <p className="text-white/30">{sym?.label}</p>
                         </div>

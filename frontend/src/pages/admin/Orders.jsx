@@ -52,11 +52,12 @@ export default function AdminOrders() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const updateStatus = async (orderId, nextStatus, itemsCredentials = null) => {
+  const updateStatus = async (orderId, nextStatus, itemsCredentials = null, sendEmail = false) => {
     setUpdatingId(orderId);
     try {
       const payload = { status: nextStatus };
       if (itemsCredentials) payload.itemsCredentials = itemsCredentials;
+      if (sendEmail) payload.sendEmail = true;
       
       await orderAPI.updateStatus(orderId, payload);
       toast.success('Đã cập nhật trạng thái');
@@ -150,25 +151,38 @@ export default function AdminOrders() {
                       </span>
                     </td>
                     <td className="p-4 text-right">
-                      {o.status === 'pending_contact' ? (
-                         <button 
-                          onClick={() => setSelectedOrder(o)}
-                          className="btn-primary py-1.5 px-3 text-xs inline-flex items-center gap-1.5"
-                         >
-                           <FiSettings /> Xử lý cấp phát
-                         </button>
-                      ) : (
-                        <select
-                          className="input-field py-1.5 px-2 text-xs cursor-pointer w-auto"
-                          value={o.status}
-                          disabled={updatingId === o._id}
-                          onChange={(e) => updateStatus(o._id, e.target.value)}
-                        >
-                          <option value="pending_contact" className="bg-dark-800">pending_contact</option>
-                          <option value="completed" className="bg-dark-800">completed</option>
-                          <option value="cancelled" className="bg-dark-800">cancelled</option>
-                        </select>
-                      )}
+                      <div className="flex items-center justify-end gap-2">
+                        {o.status === 'pending_contact' ? (
+                           <button 
+                            onClick={() => setSelectedOrder(o)}
+                            className="btn-primary py-1.5 px-3 text-xs inline-flex items-center gap-1.5"
+                           >
+                             <FiSettings /> Xử lý cấp phát
+                           </button>
+                        ) : (
+                          <>
+                            {o.status === 'completed' && (
+                              <button 
+                                onClick={() => setSelectedOrder(o)}
+                                className="btn-secondary py-1.5 px-3 text-xs inline-flex items-center gap-1.5"
+                                title="Sửa thông tin cấp phát"
+                              >
+                                <FiSettings /> Sửa TT
+                              </button>
+                            )}
+                            <select
+                              className="input-field py-1.5 px-2 text-xs cursor-pointer w-auto"
+                              value={o.status}
+                              disabled={updatingId === o._id}
+                              onChange={(e) => updateStatus(o._id, e.target.value)}
+                            >
+                              <option value="pending_contact" className="bg-dark-800">pending_contact</option>
+                              <option value="completed" className="bg-dark-800">completed</option>
+                              <option value="cancelled" className="bg-dark-800">cancelled</option>
+                            </select>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -206,7 +220,7 @@ export default function AdminOrders() {
         <OrderProcessModal 
           order={selectedOrder} 
           onClose={() => setSelectedOrder(null)} 
-          onSubmit={(credentials) => updateStatus(selectedOrder._id, 'completed', credentials)}
+          onSubmit={(credentials, sendEmail) => updateStatus(selectedOrder._id, 'completed', credentials, sendEmail)}
           isSubmitting={updatingId === selectedOrder._id}
         />
       )}
@@ -233,6 +247,8 @@ function OrderProcessModal({ order, onClose, onSubmit, isSubmitting }) {
       }
     }));
   });
+  
+  const [sendEmail, setSendEmail] = useState(true);
 
   const handleChange = (index, field, value) => {
     const newData = [...formData];
@@ -269,7 +285,7 @@ function OrderProcessModal({ order, onClose, onSubmit, isSubmitting }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    onSubmit(formData, sendEmail);
   };
 
   return (
@@ -277,7 +293,9 @@ function OrderProcessModal({ order, onClose, onSubmit, isSubmitting }) {
       <div className="bg-dark-800 border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
         <div className="p-5 border-b border-white/5 flex justify-between items-center bg-white/5">
           <div>
-            <h2 className="text-lg font-bold text-white">Xử lý & Cấp phát dịch vụ</h2>
+            <h2 className="text-lg font-bold text-white">
+              {order.status === 'completed' ? 'Sửa thông tin cấp phát' : 'Xử lý & Cấp phát dịch vụ'}
+            </h2>
             <p className="text-white/50 text-xs mt-1">Mã đơn: #{order._id.slice(-8).toUpperCase()} - Khách: {order.userId?.username}</p>
           </div>
           <button onClick={onClose} className="p-2 text-white/40 hover:text-white rounded-lg hover:bg-white/10 transition-colors">
@@ -398,6 +416,25 @@ function OrderProcessModal({ order, onClose, onSubmit, isSubmitting }) {
               )}
             </div>
           ))}
+        </div>
+
+        <div className="px-5 py-3 border-t border-white/10 flex items-center justify-between">
+          <label className="flex items-center gap-2 cursor-pointer group">
+            <div className="relative flex items-center">
+              <input 
+                type="checkbox" 
+                checked={sendEmail} 
+                onChange={(e) => setSendEmail(e.target.checked)}
+                className="peer sr-only"
+              />
+              <div className="w-5 h-5 rounded border border-white/20 bg-dark-900 peer-checked:bg-primary-500 peer-checked:border-primary-500 flex items-center justify-center transition-colors">
+                <svg className={`w-3 h-3 text-white transition-transform ${sendEmail ? 'scale-100' : 'scale-0'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+            <span className="text-sm font-medium text-white/70 group-hover:text-white transition-colors">Gửi email thông báo cho khách</span>
+          </label>
         </div>
 
         <div className="p-4 border-t border-white/10 bg-dark-900/50 flex justify-end gap-3">

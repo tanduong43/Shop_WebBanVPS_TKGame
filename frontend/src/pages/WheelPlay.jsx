@@ -2,8 +2,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { wheelAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import spinSoundPath from '../assets/audio/spin.mp3';
-import winSoundPath from '../assets/audio/win.mp3';
 import { toast } from 'react-toastify';
 import confetti from 'canvas-confetti';
 import {
@@ -39,11 +37,25 @@ export default function WheelPlay() {
   const animationRef = useRef(null);
   const angleRef = useRef(0);
 
-  // Phát âm thanh quay bằng Audio HTML5
+  // Audio refs
+  const spinAudioRef = useRef(null);
+  const winAudioRef = useRef(null);
+
+  useEffect(() => {
+    spinAudioRef.current = new Audio('/audio/spin.mp3');
+    winAudioRef.current = new Audio('/audio/win.mp3');
+    
+    spinAudioRef.current.preload = 'auto';
+    winAudioRef.current.preload = 'auto';
+    spinAudioRef.current.load();
+    winAudioRef.current.load();
+  }, []);
+
+  // Phát âm thanh quay bằng cách clone để không bị ngắt quãng tiếng Tích nếu quay nhanh
   const playTickSound = () => {
-    if (!soundEnabled) return;
+    if (!soundEnabled || !spinAudioRef.current) return;
     try {
-      const audio = new Audio(spinSoundPath);
+      const audio = spinAudioRef.current.cloneNode();
       audio.volume = 0.5;
       audio.play().catch(e => console.warn(e));
     } catch (e) {
@@ -51,13 +63,13 @@ export default function WheelPlay() {
     }
   };
 
-  // Phát âm thanh chiến thắng bằng Audio HTML5
+  // Phát âm thanh chiến thắng
   const playWinSound = () => {
-    if (!soundEnabled) return;
+    if (!soundEnabled || !winAudioRef.current) return;
     try {
-      const audio = new Audio(winSoundPath);
-      audio.volume = 0.8;
-      audio.play().catch(e => console.warn(e));
+      winAudioRef.current.currentTime = 0;
+      winAudioRef.current.volume = 0.8;
+      winAudioRef.current.play().catch(e => console.warn(e));
     } catch (e) {
       console.warn('Audio play failed:', e.message);
     }
@@ -270,11 +282,11 @@ export default function WheelPlay() {
       const centerAngleOfWinner = (segmentIndex + 0.5) * segmentAngle;
       const targetAngle = 1.5 * Math.PI - centerAngleOfWinner;
 
-      // Thực hiện xoay 8-10 vòng lớn trước khi dừng để tạo kịch tính
-      const extraLaps = 8 + Math.floor(Math.random() * 4);
+      // Thực hiện xoay nhiều vòng hơn để khớp với thời gian 9 giây
+      const extraLaps = 14 + Math.floor(Math.random() * 4);
       const finalAngle = extraLaps * 2 * Math.PI + targetAngle;
 
-      const duration = 5000; // Thời gian quay: 5 giây
+      const duration = 9000; // Thời gian quay: 9 giây
       const startTime = performance.now();
       const initialAngle = angleRef.current % (2 * Math.PI);
 
@@ -324,7 +336,7 @@ export default function WheelPlay() {
             origin: { y: 0.6 }
           });
 
-          // Phát nhạc arpeggio chiến thắng
+          // Phát nhạc chiến thắng
           playWinSound();
 
           // Cập nhật số dư realtime lên Navbar

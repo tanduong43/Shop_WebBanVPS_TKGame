@@ -4,7 +4,7 @@ const Product = require('../models/Product');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User'); // Import User if needed to ensure we can update user properly
 const { successResponse, errorResponse, paginatedResponse } = require('../utils/apiResponse');
-const { sendAdminNewOrderEmail } = require('../utils/sendEmail');
+const { sendAdminNewOrderEmail, sendCustomerOrderInfoEmail } = require('../utils/sendEmail');
 
 /**
  * Tạo nội dung tin nhắn Zalo từ đơn hàng
@@ -206,6 +206,8 @@ const updateOrderStatus = async (req, res, next) => {
       return errorResponse(res, 'Không tìm thấy đơn hàng', 404);
     }
 
+    const isUpdate = (order.status === 'completed' && status === 'completed');
+
     order.status = status;
     if (adminNote !== undefined) order.adminNote = adminNote;
 
@@ -231,12 +233,12 @@ const updateOrderStatus = async (req, res, next) => {
         const item = order.items.id(cred.itemId);
         if (item) {
           // Gán từng field để Mongoose tự bắt thay đổi, hoặc dùng markModified
-          item.credentials.ip = cred.credentials.ip || item.credentials.ip;
-          item.credentials.username = cred.credentials.username || item.credentials.username;
-          item.credentials.password = cred.credentials.password || item.credentials.password;
-          item.credentials.server = cred.credentials.server || item.credentials.server;
-          item.credentials.expiresAt = cred.credentials.expiresAt || item.credentials.expiresAt;
-          item.credentials.cycle = cred.credentials.cycle || item.credentials.cycle;
+          if (cred.credentials.ip !== undefined) item.credentials.ip = cred.credentials.ip;
+          if (cred.credentials.username !== undefined) item.credentials.username = cred.credentials.username;
+          if (cred.credentials.password !== undefined) item.credentials.password = cred.credentials.password;
+          if (cred.credentials.server !== undefined) item.credentials.server = cred.credentials.server;
+          if (cred.credentials.expiresAt !== undefined) item.credentials.expiresAt = cred.credentials.expiresAt;
+          if (cred.credentials.cycle !== undefined) item.credentials.cycle = cred.credentials.cycle;
 
           // Nếu có thiết lập IP hoặc username mà chưa có createdAt, thì coi như vừa tạo
           if (!item.credentials.createdAt && (cred.credentials.ip || cred.credentials.username)) {
@@ -251,6 +253,12 @@ const updateOrderStatus = async (req, res, next) => {
     
     // Nạp lại thông tin user để trả về
     await order.populate('userId', 'username email');
+
+    if (req.body.sendEmail) {
+      sendCustomerOrderInfoEmail(order, order.userId, isUpdate).catch(err => {
+        console.error('Lỗi khi gửi email thông tin đơn hàng cho khách:', err);
+      });
+    }
 
     return successResponse(res, order, 'Cập nhật trạng thái đơn hàng thành công');
   } catch (error) {

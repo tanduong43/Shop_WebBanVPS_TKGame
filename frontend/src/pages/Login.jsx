@@ -1,5 +1,5 @@
 // src/pages/Login.jsx - Trang đăng nhập
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
@@ -17,6 +17,9 @@ const Login = () => {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // Input refs for focus management
+  const passwordRef = useRef(null);
 
   // Forgot password state
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -90,6 +93,12 @@ const Login = () => {
                   type="text"
                   value={form.email}
                   onChange={(e) => { setForm({ ...form, email: e.target.value }); setErrors({ ...errors, email: '' }); }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault(); // Ngăn submit form
+                      passwordRef.current?.focus(); // Chuyển sang ô nhập password
+                    }
+                  }}
                   placeholder="taikhoan hoặc example@email.com"
                   className={`input-field pl-11 ${errors.email ? 'border-red-500/50' : ''}`}
                 />
@@ -103,6 +112,7 @@ const Login = () => {
               <div className="relative">
                 <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
                 <input
+                  ref={passwordRef}
                   type={showPass ? 'text' : 'password'}
                   value={form.password}
                   onChange={(e) => { setForm({ ...form, password: e.target.value }); setErrors({ ...errors, password: '' }); }}
